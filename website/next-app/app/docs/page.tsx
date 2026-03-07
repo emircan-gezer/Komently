@@ -43,7 +43,7 @@ export default function DocsPage() {
                         <p className="text-sm leading-relaxed text-muted-foreground">
                             <strong className="font-semibold text-foreground">Komently</strong> is a modern,
                             embeddable comment engine built with <strong className="text-foreground">Functional Minimalism</strong> and
-                            a <strong className="text-foreground">Softer Rounded UI</strong> aesthetic.
+                            a <strong className="text-foreground">Premium Minimalist</strong> aesthetic.
                             Each section is identified by a unique <InlineCode>publicId</InlineCode>.
                         </p>
                         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
@@ -63,7 +63,7 @@ export default function DocsPage() {
                     </p>
                     <CodeBlock filename="index.html" lang="HTML">
                         {`<!-- Coming Soon: CDN SDK -->
-<script src="https://cdn.komently.io/sdk/komently.js" defer></script>
+<script src="${process.env.NEXT_PUBLIC_KOMENTLY_BASE_URL}/sdk/komently.js" defer></script>
 
 <div id="komently-container" data-public-id="your-unique-id"></div>`}
                     </CodeBlock>
@@ -79,7 +79,7 @@ export default function Page() {
     <CommentSection 
       publicId="blog-post-42" 
       apiKey="your-api-key"
-      baseUrl="https://api.komently.io"
+      baseUrl="${process.env.NEXT_PUBLIC_KOMENTLY_BASE_URL}"
       pageSize={10} 
     />
   );
@@ -123,7 +123,7 @@ export default function Page() {
                             </span>
                         </div>
                         <CodeBlock filename="fetch-comments" lang="bash">
-                            {`curl https://komently.io/api/comments/demo \\
+                            {`curl ${process.env.NEXT_PUBLIC_KOMENTLY_BASE_URL}/api/comments/demo \\
   -H "x-commenter-token: <your_jwt>"`}
                         </CodeBlock>
                     </div>

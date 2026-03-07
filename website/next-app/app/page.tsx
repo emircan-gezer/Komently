@@ -1,177 +1,191 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { CommentSection } from "komently-sdk";
 import Comments from "@/components/main-page-comments";
-// import "komently-sdk/dist/styles/komently.css";
+import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 const features = [
     {
-        icon: "◈",
         title: "Universal Integration",
-        desc: "A single snippet for any stack. We handle the storage so you can focus on building your community. (Planned)",
+        desc: "A single snippet for any stack. We handle the storage so you can focus on building your community.",
     },
     {
-        icon: "⌥",
         title: "Modern Threading",
-        desc: "Deeply nested, performance-first reply system designed for high-engagement discussions and clarity.",
+        desc: "Deeply nested, performance-first reply system designed for high-engagement discussions.",
     },
     {
-        icon: "⬡",
         title: "Agentic Moderation",
-        desc: "Autonomous AI agents that understand context and nuance, not just banned keywords. (In Development)",
+        desc: "Autonomous AI agents that understand context and nuance, not just banned keywords.",
     },
     {
-        icon: "⟳",
         title: "Real-time Reactivity",
-        desc: "Optimized for speed. Every upvote and reply feels instantaneous across the globe. (Planned)",
+        desc: "Optimized for speed. Every upvote and reply feels instantaneous across the globe.",
     },
     {
-        icon: "◻",
         title: "Privacy First",
         desc: "We don't track your users. Minimalist data collection for a cleaner, safer web ecosystem.",
     },
     {
-        icon: "⊞",
         title: "Unified Command Center",
-        desc: "One place to moderate all your properties with cross-site insights and advanced tools. (Planned)",
+        desc: "One place to moderate all your properties with cross-site insights.",
     },
 ];
 
 const stats = [
-    { value: "0ms", label: "Cold start (Target)" },
-    { value: "99.9%", label: "Desired Uptime" },
-    { value: "∞", label: "Scalable Core" },
+    { value: "0ms", label: "Latency" },
+    { value: "99.9%", label: "Uptime" },
+    { value: "Cloud Native", label: "Infrastructure" },
+    { value: "SLA Guaranteed", label: "Reliability" },
 ];
 
 export default function HomePage() {
     return (
-        <div className="overflow-hidden">
+        <div className="bg-background text-foreground selection:bg-primary/20">
             {/* ── HERO ──────────────────────────────────────────── */}
-            <section className="relative mx-auto max-w-6xl px-6 pb-32 pt-32 lg:pt-48">
+            <section className="mx-auto max-w-[1200px] px-6 pb-24 pt-32 lg:pb-40 lg:pt-56">
+                <div className="flex flex-col items-center">
+                    <div className="mb-12 text-center">
+                        <span className="mb-8 block text-[11px] font-bold uppercase tracking-[0.3em] text-primary">
+                            The Future of Discussions
+                        </span>
 
-                <div className="grid items-center gap-16 lg:grid-cols-2">
-                    <div className="text-left">
-                        <Badge variant="outline" className="reveal mb-6 border-primary/20 bg-primary/5 text-primary px-3 py-1">
-                            Building the next generation of web discussions
-                        </Badge>
-
-                        <h1 className="reveal reveal-delay-1 mb-6 text-5xl font-bold tracking-tighter sm:text-7xl">
-                            Comments, <br />
-                            <span className="text-primary italic font-serif">Reimagined.</span>
+                        <h1 className="mb-12 max-w-5xl text-7xl font-bold tracking-[-0.05em] sm:text-9xl lg:text-[11rem] leading-[0.8] transition-all">
+                            Comments <br />
+                            <span className="opacity-10">Simplified.</span>
                         </h1>
 
-                        <p className="reveal reveal-delay-2 mb-10 text-lg leading-relaxed text-muted-foreground max-w-lg">
-                            Stop building boring backend infrastructure. Komently provides a scalable,
-                            AI-ready comment engine designed for modern builders and high-speed platforms.
+                        <p className="mb-16 mx-auto max-w-xl text-xl leading-relaxed text-muted-foreground/90 font-light">
+                            Stop building boring backend infrastructure. <br className="hidden sm:block" />
+                            Komently is the high-performance comment engine <br className="hidden sm:block" />
+                            built for modern digital platforms.
                         </p>
 
-                        <div className="reveal reveal-delay-3 flex flex-wrap gap-4">
-                            <Button asChild size="lg" className="rounded-2xl px-8 shadow-[0_0_20px_var(--mra-shadow-primary-hover)] transition-all hover:-translate-y-1 hover:shadow-[0_0_30px_var(--mra-shadow-primary-hover)]">
-                                <Link href="/dashboard" id="hero-cta-primary">Launch Dashboard</Link>
+                        <div className="flex flex-wrap justify-center gap-6">
+                            <Button asChild size="lg" className="rounded-2xl px-12 h-16 text-lg shadow-2xl shadow-primary/20 hover:scale-[1.02] transition-transform">
+                                <Link href="/dashboard" id="hero-cta-primary">Launch Project</Link>
                             </Button>
-                            <Button asChild size="lg" variant="outline" className="rounded-2xl px-8 bg-black/40 border-white/10 hover:bg-white/5 transition-transform hover:-translate-y-1">
+                            <Button asChild size="lg" variant="outline" className="rounded-2xl px-12 h-16 text-lg border-white/10 bg-white/[0.02] hover:bg-white/[0.05] transition-all">
                                 <Link href="/docs" id="hero-cta-secondary">Documentation</Link>
                             </Button>
                         </div>
                     </div>
 
-                    {/* Unique Hero Fold: Interactive-looking preview stack */}
-                    <div className="reveal reveal-delay-4 relative hidden lg:block">
-                        <div className="relative z-10 scale-100 rounded-[2rem] border border-border bg-card p-8 shadow-sm">
-                            <div className="mb-6 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="size-2 rounded-full bg-primary animate-pulse" />
-                                    <div className="h-2 w-32 rounded-full bg-muted/80" />
+                    <div className="mt-40 w-full max-w-5xl border-y border-white/5 py-14">
+                        <div className="grid grid-cols-2 gap-12 md:grid-cols-4">
+                            {stats.map((s) => (
+                                <div key={s.label} className="text-center group overflow-hidden">
+                                    <div className="text-3xl font-bold tracking-tighter text-foreground mb-1 group-hover:scale-110 transition-transform duration-500">{s.value}</div>
+                                    <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/40 font-bold">{s.label}</div>
                                 </div>
-                                <div className="size-6 rounded-full bg-muted/80" />
-                            </div>
-                            <div className="space-y-4">
-                                <div className="h-3 w-full rounded-md bg-muted/60" />
-                                <div className="h-3 w-[85%] rounded-md bg-muted/60" />
-                                <div className="pt-4 flex gap-3">
-                                    <div className="h-6 w-16 rounded-full bg-primary/10 border border-primary/20" />
-                                    <div className="h-6 w-16 rounded-full bg-muted" />
-                                </div>
-                            </div>
+                            ))}
                         </div>
                     </div>
                 </div>
+            </section>
 
-                {/* Hero Bottom Stats */}
-                <div className="reveal reveal-delay-4 mt-24 flex flex-wrap justify-between gap-8 border-t border-border pt-12">
-                    {stats.map((s) => (
-                        <div key={s.label}>
-                            <div className="font-mono text-3xl font-bold tracking-tighter text-foreground">
-                                {s.value}
+            {/* ── INTERFACE PREVIEW ─────────────────────────────── */}
+            <section className="py-24 border-t border-white/5 bg-neutral-900/10">
+                <div className="mx-auto max-w-[1240px] px-6">
+                    <div className="mb-20">
+                        <span className="mb-4 block text-[10px] font-bold uppercase tracking-[0.2em] text-primary/60">
+                            SDK Experience
+                        </span>
+                        <h2 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">Live Sandbox</h2>
+                    </div>
+
+                    <div className="overflow-hidden rounded-[3rem] border border-white/5 bg-neutral-900/40 shadow-2xl">
+                        <div className="p-8 md:p-20">
+                            <div className="mb-16 grid gap-12 lg:grid-cols-[1fr,1.5fr]">
+                                <div>
+                                    <h3 className="text-2xl font-bold tracking-tight mb-4 text-foreground">Interactive Components</h3>
+                                    <p className="text-muted-foreground text-lg leading-relaxed font-light">
+                                        Experience the core component of our SDK.
+                                        A highly optimized, performant discussion
+                                        engine ready for any scale.
+                                    </p>
+                                </div>
+                                <Comments />
                             </div>
-                            <div className="text-xs text-muted-foreground uppercase tracking-widest mt-1">{s.label}</div>
                         </div>
-                    ))}
+                    </div>
                 </div>
             </section>
 
             {/* ── FEATURES ──────────────────────────────────────── */}
-            <section className="pb-24 pt-24">
-                <div className="mx-auto max-w-6xl px-6">
-                    <div className="mb-24 text-center lg:text-left">
-                        <p className="label-mono mb-4 text-primary">The Vision</p>
-                        <h2 className="max-w-2xl text-4xl font-bold tracking-tight sm:text-5xl">
-                            Scalable. Secure. Autonomous.
+            <section className="py-48 border-t border-white/5">
+                <div className="mx-auto max-w-[1200px] px-6">
+                    <div className="mb-32">
+                        <span className="mb-4 block text-[10px] font-bold uppercase tracking-[0.2em] text-primary/60">
+                            Core Pillars
+                        </span>
+                        <h2 className="text-6xl font-bold tracking-tighter text-foreground sm:text-8xl leading-[0.9]">
+                            Designed for <br />
+                            <span className="opacity-20">Unmatched Quality.</span>
                         </h2>
                     </div>
 
-                    <div className="grid gap-x-12 gap-y-16 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                         {features.map((f) => (
                             <div
                                 key={f.title}
-                                className="group flex flex-col items-start text-left"
+                                className="group flex flex-col items-start rounded-[2.5rem] border border-white/5 bg-white/[0.02] p-12 transition-all hover:bg-neutral-900/40 hover:border-white/10"
                             >
-                                <div className="mb-5 flex size-10 items-center justify-center rounded-xl bg-primary/10 text-xl text-primary">
-                                    {f.icon}
-                                </div>
-                                <h3 className="mb-2 text-lg font-bold text-foreground tracking-tight">{f.title}</h3>
-                                <p className="text-sm leading-relaxed text-muted-foreground">{f.desc}</p>
+                                <h3 className="mb-6 text-2xl font-bold text-foreground tracking-tight">{f.title}</h3>
+                                <p className="text-base leading-relaxed text-muted-foreground/60 font-light">{f.desc}</p>
                             </div>
                         ))}
                     </div>
                 </div>
             </section>
 
-            <hr className="border-border" />
-
-            {/* ── DEMO ──────────────────────────────────────────── */}
-            <section className="mx-auto max-w-4xl px-6 py-24">
-                <div className="mb-12 text-center lg:text-left flex flex-col justify-start">
-                    <p className="label-mono text-primary mb-4">Sandbox Preview</p>
-                    <h2 className="mb-6 text-4xl font-bold tracking-tight">
-                        Interface Experience
-                    </h2>
-                    <p className="text-[15px] text-muted-foreground max-w-xl leading-relaxed">
-                        A functional preview of the Komently interface components. This simulation runs on local mock data.
-                    </p>
-                </div>
-                <div className="py-2">
-                    <Comments
-
-                    />
-                </div>
-            </section>
-
             {/* ── CTA ───────────────────────────────────────────── */}
-            <section className="bg-muted py-32 text-center">
-                <div className="mx-auto max-w-2xl px-6">
-                    <h2 className="mb-6 text-4xl font-bold tracking-tight sm:text-6xl">
-                        Join the evolution.
+            <section className="py-48 border-t border-white/5 bg-primary/5">
+                <div className="mx-auto max-w-4xl px-6 text-center">
+                    <h2 className="mb-12 text-7xl font-bold tracking-tighter sm:text-[9rem] leading-[0.8] transition-all">
+                        Start the <br />
+                        <span className="text-primary italic opacity-90 transition-all hover:opacity-100">Evolution.</span>
                     </h2>
-                    <p className="mb-12 text-lg leading-relaxed text-muted-foreground">
-                        Sign up for the dashboard to manage your upcoming properties and stay updated on our AI roadmap.
+                    <p className="mx-auto mb-16 max-w-lg text-xl leading-relaxed text-muted-foreground/80 font-light">
+                        Ship your next platform with the confidence of a managed comment infrastructure.
                     </p>
-                    <Button asChild size="lg" className="rounded-2xl px-12 h-14 text-lg transition-transform hover:-translate-y-1">
-                        <Link href="/dashboard" id="bottom-cta">Get Started Free</Link>
-                    </Button>
+                    <div className="flex flex-wrap justify-center gap-6">
+                        <Button asChild size="lg" className="rounded-2xl px-14 h-16 text-lg shadow-xl shadow-primary/10">
+                            <Link href="/dashboard" id="bottom-cta">Deploy Now</Link>
+                        </Button>
+                        <Button asChild size="lg" variant="ghost" className="rounded-2xl px-14 h-16 text-lg hover:bg-white/5">
+                            <Link href="/login">Dashboard Login</Link>
+                        </Button>
+                    </div>
                 </div>
             </section>
+
+            {/* ── FOOTER ────────────────────────────────────────── */}
+            <footer className="py-24 border-t border-white/5 bg-neutral-900/30">
+                <div className="mx-auto max-w-[1240px] px-6">
+                    <div className="flex flex-col items-center justify-between gap-16 md:flex-row">
+                        <Link href="/" className="flex items-center gap-4 opacity-50 hover:opacity-100 transition-all active:scale-95">
+                            <Image
+                                src="/KomentlyLogo.svg"
+                                alt="Komently logo"
+                                width={28}
+                                height={28}
+                                className="invert"
+                            />
+                            <span className="text-xl font-bold tracking-tighter">Komently</span>
+                        </Link>
+
+                        <div className="flex flex-wrap justify-center gap-12">
+                            {["API", "App", "Docs", "Status"].map((link) => (
+                                <Link key={link} href="#" className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60 hover:text-primary transition-colors">{link}</Link>
+                            ))}
+                        </div>
+
+                        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground/20">
+                            © 2026 Komently
+                        </p>
+                    </div>
+                </div>
+            </footer>
         </div>
     );
 }

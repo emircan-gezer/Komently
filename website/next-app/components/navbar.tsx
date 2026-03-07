@@ -10,7 +10,6 @@ import { createClient } from "@/lib/supabase/client";
 
 const navLinks = [
     { href: "/", label: "Home" },
-    { href: "/dashboard", label: "Dashboard" },
     { href: "/docs", label: "Documentation" },
 ];
 
@@ -53,7 +52,7 @@ export function Navbar() {
             <div className="mx-auto flex h-full max-w-[1200px] items-center justify-between px-6">
 
                 {/* Logo */}
-                <Link href="/" className="flex items-center gap-2.5">
+                <Link href="/" className="flex items-center gap-3 transition-opacity hover:opacity-90">
                     <Image
                         src="/KomentlyLogo.svg"
                         alt="Komently logo"
@@ -61,17 +60,17 @@ export function Navbar() {
                         height={28}
                         className="invert"
                     />
-                    <span className="text-base font-semibold tracking-tight text-foreground">
+                    <span className="text-lg font-bold tracking-tighter text-foreground">
                         Komently
                     </span>
                 </Link>
 
                 {/* Desktop links */}
-                <div className="hidden items-center gap-0.5 md:flex">
+                <div className="hidden items-center gap-1 md:flex">
                     {navLinks.map((link) => {
                         // Don't show Dashboard link in the main nav if logged out (handled by button later)
                         if (link.href === '/dashboard' && !user && !loading) return null;
-                        if (link.href === '/dashboard' && loading) return <div key="skeleton" className="w-20 h-8 rounded-md bg-muted/20 animate-pulse" />;
+                        if (link.href === '/dashboard' && loading) return <div key="skeleton" className="w-20 h-8 rounded-xl bg-muted/20 animate-pulse" />;
 
                         const active = pathname === link.href;
                         return (
@@ -79,7 +78,7 @@ export function Navbar() {
                                 key={link.href}
                                 href={link.href}
                                 className={cn(
-                                    "rounded-xl px-3.5 py-1.5 text-sm font-medium transition-colors",
+                                    "rounded-xl px-4 py-2 text-sm font-medium transition-colors",
                                     active
                                         ? "bg-muted text-foreground"
                                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -92,44 +91,44 @@ export function Navbar() {
                 </div>
 
                 {/* CTA + mobile toggle */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                     {loading ? (
                         <div className="hidden md:flex gap-2">
-                            <div className="w-14 h-8 rounded-full bg-muted/20 animate-pulse" />
-                            <div className="w-20 h-8 rounded-full bg-muted/20 animate-pulse" />
+                            <div className="w-14 h-8 rounded-xl bg-muted/20 animate-pulse" />
+                            <div className="w-20 h-8 rounded-xl bg-muted/20 animate-pulse" />
                         </div>
                     ) : user ? (
-                        <div className="hidden md:flex items-center gap-2">
-                            <Button asChild size="sm" variant="ghost" className="rounded-full text-muted-foreground hover:text-foreground">
+                        <div className="hidden md:flex items-center gap-3">
+                            <Button asChild size="sm" variant="ghost" className="rounded-xl text-muted-foreground hover:text-foreground">
                                 <Link href="/dashboard">Dashboard</Link>
                             </Button>
-                            <Button size="sm" variant="outline" onClick={handleLogout} className="rounded-full transition-all">
+                            <Button size="sm" variant="outline" onClick={handleLogout} className="rounded-xl">
                                 Logout
                             </Button>
                         </div>
                     ) : (
                         <>
-                            <Button asChild size="sm" variant="ghost" className="hidden md:inline-flex rounded-full text-muted-foreground hover:text-foreground">
+                            <Button asChild size="sm" variant="ghost" className="hidden md:inline-flex rounded-xl text-muted-foreground hover:text-foreground">
                                 <Link href="/login">Login</Link>
                             </Button>
-                            <Button asChild size="sm" className="hidden md:inline-flex rounded-full transition-all">
+                            <Button asChild size="sm" className="hidden md:inline-flex rounded-xl">
                                 <Link href="/register">Register</Link>
                             </Button>
                         </>
                     )}
                     <button
                         onClick={() => setOpen((v) => !v)}
-                        className="flex size-9 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
+                        className="flex size-10 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
                         aria-label="Toggle menu"
                     >
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
                             {open ? (
                                 <path d="M2 2l12 12M2 14L14 2" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
                             ) : (
                                 <>
-                                    <rect y="2" width="16" height="1.5" rx="0.75" />
+                                    <rect y="3" width="16" height="1.5" rx="0.75" />
                                     <rect y="7.25" width="16" height="1.5" rx="0.75" />
-                                    <rect y="12.5" width="16" height="1.5" rx="0.75" />
+                                    <rect y="11.5" width="16" height="1.5" rx="0.75" />
                                 </>
                             )}
                         </svg>

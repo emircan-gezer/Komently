@@ -61,34 +61,34 @@
    Philosophy: No gradients. Depth through opacity + borders.
    Charcoal backgrounds, Deep Blue primary.                            */
 .dark {
-  --background: oklch(0.25 0 0);
-  /* Charcoal #1e1e1e-ish */
-  --foreground: oklch(0.918 0 0);
-  /* #E6E6E6 */
-  --card: oklch(0.28 0 0);
-  /* Slightly lighter charcoal #252525-ish */
-  --card-foreground: oklch(0.918 0 0);
-  --popover: oklch(0.28 0 0);
-  --popover-foreground: oklch(0.918 0 0);
-  --primary: oklch(0.62 0.23 260);
-  /* Brighter Deep Blue for better dark bg contrast */
+  --background: oklch(0.20 0 0);
+  /* Deeper Charcoal #161616-ish */
+  --foreground: oklch(0.95 0 0);
+  /* #F2F2F2 high contrast */
+  --card: oklch(0.24 0 0);
+  /* #1e1e1e */
+  --card-foreground: oklch(0.95 0 0);
+  --popover: oklch(0.24 0 0);
+  --popover-foreground: oklch(0.95 0 0);
+  --primary: oklch(0.65 0.20 255);
+  /* Solid Blue #507ABF equivalent */
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.22 0 0);
-  /* #2d2d2d */
-  --secondary-foreground: oklch(0.918 0 0);
-  --muted: oklch(0.22 0 0);
-  /* #2d2d2d section bg */
-  --muted-foreground: oklch(0.650 0 0);
-  /* ~60% grey */
-  --accent: oklch(0.62 0.23 260);
-  /* Brighter deep blue */
+  --secondary: oklch(0.28 0 0);
+  /* #252525 */
+  --secondary-foreground: oklch(0.95 0 0);
+  --muted: oklch(0.24 0 0);
+  /* #1e1e1e section bg */
+  --muted-foreground: oklch(0.60 0 0);
+  /* ~50% grey for secondary text */
+  --accent: oklch(0.65 0.20 255);
   --accent-foreground: oklch(1 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  /* Slightly more visible borders */
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.62 0.23 260);
-  --radius: 0.625rem;
+  --border: oklch(1 0 0 / 8%);
+  /* Subtle borders */
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.65 0.20 255);
+  --radius: 1rem;
+  /* Smooth "2xl" base radius */
 }
 
 /* ── Base layer ─────────────────────────────────────────────────────────── */

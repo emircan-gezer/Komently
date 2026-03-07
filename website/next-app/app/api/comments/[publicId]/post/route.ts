@@ -47,15 +47,39 @@ export async function POST(
     const cookieStore = await cookies();
     const adminClient = await supabase(cookieStore);
 
-    // 3 — resolve section
+    // 3 — resolve section & settings
     const { data: section, error: sErr } = await adminClient
         .from("comment_sections")
-        .select("id")
+        .select("id, settings")
         .eq("public_id", publicId)
         .single();
 
     if (sErr || !section) {
         return NextResponse.json({ error: "Section not found" }, { status: 404 });
+    }
+
+    const settings = (section.settings as any) || {};
+
+    // ── Pre-moderation / Validation Based on Section Settings ──────────────────
+
+    // 1. Max Characters
+    const maxChars = settings.max_chars ?? 5000;
+    if (body.length > maxChars) {
+        return NextResponse.json(
+            { error: `Comment is too long (max ${maxChars} characters)` },
+            { status: 422 }
+        );
+    }
+
+    // 2. Blacklist
+    const blacklist = settings.blacklist ?? [];
+    const lowerBody = body.toLowerCase();
+    const hit = blacklist.find((word: string) => lowerBody.includes(word.toLowerCase()));
+    if (hit) {
+        return NextResponse.json(
+            { error: "Comment contains prohibited language" },
+            { status: 422 }
+        );
     }
 
     // 4 — validate parent comment exists in same section (if replying)
@@ -82,6 +106,7 @@ export async function POST(
             commenter_id: commenter.commenterId,
             parent_id: parentId ?? null,
             body,
+            moderation_status: 'pending',
         })
         .select(`
             id, parent_id, body, created_at,
@@ -95,6 +120,12 @@ export async function POST(
     }
 
     const c = inserted as any;
+
+    // trigger async AI moderation (non-blocking)
+    import("@/lib/ai/moderator").then(({ processCommentModeration }) => {
+        processCommentModeration(inserted.id, body);
+    });
+
     return NextResponse.json(
         {
             id: c.id,

@@ -100,7 +100,8 @@ export async function GET(
         .select("id, created_at")
         .eq("section_id", section.id)
         .is("parent_id", null)
-        .eq("is_deleted", false);
+        .eq("is_deleted", false)
+        .eq("moderation_status", "approved");
 
     if (topErr) {
         return NextResponse.json({ error: "Failed to fetch comments" }, { status: 500 });
@@ -160,7 +161,8 @@ export async function GET(
         const { data: children } = await adminClient
             .from("comments")
             .select("id")
-            .in("parent_id", [...currentParents]);
+            .in("parent_id", [...currentParents])
+            .eq("moderation_status", "approved");
         const childIds = (children ?? []).map((r) => r.id);
         childIds.forEach((id) => allIds.add(id));
         currentParents = new Set(childIds);
@@ -174,7 +176,8 @@ export async function GET(
             commenters!comments_commenter_id_fkey ( username, avatar_initial, color ),
             comment_vote_counts ( likes, dislikes )
         `)
-        .in("id", [...allIds]);
+        .in("id", [...allIds])
+        .eq("moderation_status", "approved");
 
     if (rcErr) {
         return NextResponse.json({ error: "Failed to fetch comment details" }, { status: 500 });

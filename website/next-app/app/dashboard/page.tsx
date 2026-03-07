@@ -273,12 +273,17 @@ export default function DashboardPage() {
                                 className="group grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 border-b border-border/50 bg-card px-5 py-4 last:border-0 transition-colors hover:bg-muted/30"
                             >
                                 {/* Name */}
-                                <div>
-                                    <div className="text-sm font-medium text-foreground">{section.name}</div>
+                                <Link
+                                    href={`/dashboard/${section.public_id}`}
+                                    className="flex flex-col items-start"
+                                >
+                                    <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                                        {section.name}
+                                    </div>
                                     <div className="mt-0.5 font-mono text-xs text-muted-foreground/60">
                                         {section.public_id}
                                     </div>
-                                </div>
+                                </Link>
 
                                 {/* Count */}
                                 <div className="font-mono text-sm text-muted-foreground">
@@ -299,19 +304,19 @@ export default function DashboardPage() {
                                     </Badge>
                                 </div>
 
-                                {/* Last active + API link */}
+                                {/* Last active + Manage link */}
                                 <div className="flex items-center gap-3">
-                                    <span className="font-mono text-xs text-muted-foreground">
+                                    <span className="font-mono text-xs text-muted-foreground mr-4">
                                         {timeAgo(section.lastActive)}
                                     </span>
                                     <Button
                                         asChild
                                         variant="outline"
-                                        size="xs"
-                                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                        size="sm"
+                                        className="rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
                                     >
-                                        <Link href={`/api/comments/${section.public_id}`} target="_blank">
-                                            API →
+                                        <Link href={`/dashboard/${section.public_id}`}>
+                                            Manage
                                         </Link>
                                     </Button>
                                 </div>
