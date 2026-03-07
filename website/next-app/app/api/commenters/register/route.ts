@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
 import { signCommenterToken } from "@/lib/commenter-auth";
+import { cookies } from "next/headers";
 
 const AVATAR_COLORS = [
     "#7c3aed", "#0891b2", "#059669", "#dc2626",
@@ -37,8 +38,11 @@ export async function POST(request: NextRequest) {
         );
     }
 
+    const cookieStore = await cookies();
+    const adminClient = await supabase(cookieStore);
+
     // Check username uniqueness
-    const { data: existing } = await supabase
+    const { data: existing } = await adminClient
         .from("commenters")
         .select("id")
         .eq("username", username)
@@ -51,7 +55,7 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    const { data: commenter, error } = await supabase
+    const { data: commenter, error } = await adminClient
         .from("commenters")
         .insert({ username, color })
         .select("id")

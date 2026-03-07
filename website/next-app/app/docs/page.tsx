@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { CommentSection } from "komently-sdk";
+import "komently-sdk/dist/style.css";
 
 export default function DocsPage() {
     return (
@@ -20,15 +22,15 @@ export default function DocsPage() {
             </div>
 
             {/* TOC */}
-            <nav className="mb-12 rounded-xl border border-border bg-muted px-5 py-4">
-                <p className="label-mono mb-3">On this page</p>
-                {["Overview", "Quick Integration", "API Reference"].map((item, i) => (
+            <nav className="mb-12 rounded-xl border border-border bg-muted/30 px-5 py-4">
+                <p className="label-mono mb-3 text-primary">On this page</p>
+                {["Overview", "Quick Integration", "Commenter Profiles", "API Reference"].map((item, i) => (
                     <a
                         key={item}
                         href={`#section-${i + 1}`}
                         className="block py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
-                        <span className="font-mono text-primary">{String(i + 1).padStart(2, "0")}</span>
+                        <span className="font-mono text-primary/60">{String(i + 1).padStart(2, "0")}</span>
                         {" — "}{item}
                     </a>
                 ))}
@@ -39,139 +41,114 @@ export default function DocsPage() {
                 {/* ── 01 Overview ── */}
                 <section id="section-1">
                     <SectionHeading index="01" title="Overview" />
-                    <div className="mt-5 rounded-xl border border-border bg-card p-6">
+                    <div className="mt-5 rounded-2xl border border-border bg-card p-6 shadow-sm">
                         <p className="text-sm leading-relaxed text-muted-foreground">
-                            <strong className="font-semibold text-foreground">Komently</strong> is a universal,
-                            embeddable comment system. Each comment section is identified by a{" "}
-                            <InlineCode>publicId</InlineCode> you create in your dashboard. All data is stored
-                            and served by the Komently API — no database setup required.
+                            <strong className="font-semibold text-foreground">Komently</strong> is a modern,
+                            embeddable comment engine built with <strong className="text-foreground">Functional Minimalism</strong> and
+                            a <strong className="text-foreground">Softer Rounded UI</strong> aesthetic.
+                            Each section is identified by a unique <InlineCode>publicId</InlineCode>.
                         </p>
                         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                            Supports threaded replies, upvotes/downvotes, pagination, sorting, guest commenting,
-                            and optional AI moderation out of the box.
+                            It handles real-time threading, voting, and commenter identity out of the box, allowing you to focus on your core product.
                         </p>
                     </div>
                 </section>
 
-                <hr className="border-border" />
+                <hr className="border-border/40" />
 
                 {/* ── 02 Integration ── */}
                 <section id="section-2">
                     <SectionHeading index="02" title="Quick Integration" />
 
                     <p className="mb-4 mt-5 text-sm leading-relaxed text-muted-foreground">
-                        Drop the Komently script into your HTML:
+                        Drop the Komently script into your page:
                     </p>
                     <CodeBlock filename="index.html" lang="HTML">
-                        {`<!DOCTYPE html>
-<html>
-  <head>
-    <script
-      src="https://cdn.komently.io/sdk/v1/komently.min.js"
-      defer
-    ></script>
-  </head>
-  <body>
-    <h1>My Blog Post</h1>
+                        {`<!-- Coming Soon: CDN SDK -->
+<script src="https://cdn.komently.io/sdk/komently.js" defer></script>
 
-    <!-- Comment section renders here -->
-    <div
-      id="komently-section"
-      data-komently-id="my-blog-post-123"
-    ></div>
-  </body>
-</html>`}
+<div id="komently-container" data-public-id="your-unique-id"></div>`}
                     </CodeBlock>
 
                     <p className="mb-4 mt-8 text-sm leading-relaxed text-muted-foreground">
-                        Or use the React component:
+                        Or use the native React component:
                     </p>
-                    <CodeBlock filename="page.tsx" lang="TypeScript">
-                        {`import { KomentlySection } from "@komently/react";
+                    <CodeBlock filename="CommentArea.tsx" lang="tsx">
+                        {`import { CommentSection } from "@/components/comment-section";
 
-export default function BlogPost() {
+export default function Page() {
   return (
-    <article>
-      <h1>My Post</h1>
-      <KomentlySection
-        publicId="my-blog-post-123"
-        theme="dark"
-        pageSize={10}
-        sorting="top"
-      />
-    </article>
+    <CommentSection 
+      publicId="blog-post-42" 
+      apiKey="your-api-key"
+      baseUrl="https://api.komently.io"
+      pageSize={10} 
+    />
   );
 }`}
                     </CodeBlock>
                 </section>
 
-                <hr className="border-border" />
+                <hr className="border-border/40" />
 
-                {/* ── 03 API Reference ── */}
+                {/* ── 03 Commenters ── */}
                 <section id="section-3">
-                    <SectionHeading index="03" title="API Reference" />
+                    <SectionHeading index="03" title="Commenter Profiles" />
+                    <p className="mb-4 mt-5 text-sm leading-relaxed text-muted-foreground">
+                        Komently provides a built-in authentication flow for commenters. Users can sign in to participate in threaded discussions, upvote high-quality content, and manage their identities.
+                    </p>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="rounded-xl border border-border p-4 bg-muted/10">
+                            <h4 className="text-sm font-bold mb-1">Persistent Identity</h4>
+                            <p className="text-xs text-muted-foreground leading-relaxed">Commenters maintain their username and activity across your entire platform.</p>
+                        </div>
+                        <div className="rounded-xl border border-border p-4 bg-muted/10">
+                            <h4 className="text-sm font-bold mb-1">Authenticated Voting</h4>
+                            <p className="text-xs text-muted-foreground leading-relaxed">Votes are tied to commenter accounts, preventing spam and ensuring data integrity.</p>
+                        </div>
+                    </div>
+                </section>
 
-                    {/* Endpoint badge */}
-                    <div className="mt-5 overflow-hidden rounded-xl border border-border">
-                        <div className="flex items-center gap-3 border-b border-border bg-muted px-4 py-2.5">
-                            <span className="rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-xs font-bold text-primary">
+                <hr className="border-border/40" />
+
+                {/* ── 04 API Reference ── */}
+                <section id="section-4">
+                    <SectionHeading index="04" title="API Reference" />
+
+                    <div className="mt-5 overflow-hidden rounded-2xl border border-border">
+                        <div className="flex items-center gap-3 border-b border-border bg-muted/30 px-4 py-2.5">
+                            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 font-mono text-[10px] font-bold text-primary uppercase">
                                 GET
                             </span>
-                            <span className="font-mono text-sm text-muted-foreground">
-                                /api/v1/comments/<span className="text-muted-foreground/40">{"{publicId}"}</span>
+                            <span className="font-mono text-xs text-muted-foreground">
+                                /api/comments/<span className="text-muted-foreground/40">{"{publicId}"}</span>
                             </span>
                         </div>
-                        <CodeBlock filename="request" lang="REST">
-                            {`GET https://api.komently.io/v1/comments/my-blog-post-123
-  ?pageSize=10
-  &replyDepth=2
-  &sorting=top
-  &page=1
-Authorization: Bearer YOUR_API_KEY`}
+                        <CodeBlock filename="fetch-comments" lang="bash">
+                            {`curl https://komently.io/api/comments/demo \\
+  -H "x-commenter-token: <your_jwt>"`}
                         </CodeBlock>
                     </div>
 
-                    <p className="mb-4 mt-8 text-sm text-muted-foreground">Example response:</p>
+                    <p className="mb-4 mt-8 text-sm text-muted-foreground">Response format:</p>
                     <CodeBlock filename="response.json" lang="JSON">
                         {`{
-  "publicId": "my-blog-post-123",
-  "sorting": "top",
-  "page": 1,
-  "totalCount": 42,
+  "comments": [...],
   "totalPages": 5,
-  "comments": [
-    {
-      "id": "c_a1b2c3",
-      "author": { "username": "alex_dev" },
-      "body": "This is so easy to integrate!",
-      "likes": 47,
-      "dislikes": 1,
-      "createdAt": "2025-10-12T09:14:00Z",
-      "replies": [
-        {
-          "id": "c_d4e5f6",
-          "author": { "username": "sarah_m" },
-          "body": "Totally agree!",
-          "likes": 12,
-          "dislikes": 0,
-          "createdAt": "2025-10-12T11:30:00Z"
-        }
-      ]
-    }
-  ]
+  "totalCount": 42,
+  "page": 1
 }`}
                     </CodeBlock>
 
-                    {/* Params table */}
-                    <div className="mt-8 overflow-hidden rounded-xl border border-border">
-                        <div className="border-b border-border bg-muted px-5 py-3">
-                            <span className="label-mono">Query Parameters</span>
+                    <div className="mt-8 overflow-hidden rounded-2xl border border-border shadow-sm">
+                        <div className="border-b border-border bg-muted/30 px-5 py-3">
+                            <span className="label-mono text-primary">Query Parameters</span>
                         </div>
                         <table className="w-full border-collapse text-sm">
                             <thead>
-                                <tr className="border-b border-border/50">
-                                    {["Param", "Type", "Default", "Description"].map((h) => (
-                                        <th key={h} className="bg-card px-5 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
+                                <tr className="border-b border-border/50 bg-muted/10">
+                                    {["Param", "Default", "Description"].map((h) => (
+                                        <th key={h} className="px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
                                             {h}
                                         </th>
                                     ))}
@@ -179,21 +156,19 @@ Authorization: Bearer YOUR_API_KEY`}
                             </thead>
                             <tbody>
                                 {[
-                                    { param: "pageSize", type: "number", def: "10", desc: "Comments per page (max 20)" },
-                                    { param: "replyDepth", type: "number", def: "2", desc: "Nested reply depth (max 3)" },
-                                    { param: "sorting", type: "string", def: "top", desc: "Sort: top | new | old" },
-                                    { param: "page", type: "number", def: "1", desc: "Page number for pagination" },
+                                    { param: "pageSize", def: "5", desc: "Comments per page" },
+                                    { param: "sorting", def: "top", desc: "Sort: top | new | old" },
+                                    { param: "page", def: "1", desc: "Pagination start index" },
                                 ].map((row, i, arr) => (
                                     <tr
                                         key={row.param}
                                         className={cn("bg-card", i < arr.length - 1 && "border-b border-border/30")}
                                     >
-                                        <td className="px-5 py-3">
-                                            <code className="font-mono text-xs text-primary">{row.param}</code>
+                                        <td className="px-5 py-3 whitespace-nowrap">
+                                            <code className="font-mono text-xs text-primary font-bold">{row.param}</code>
                                         </td>
-                                        <td className="px-5 py-3 font-mono text-xs text-muted-foreground">{row.type}</td>
                                         <td className="px-5 py-3 font-mono text-xs text-muted-foreground">{row.def}</td>
-                                        <td className="px-5 py-3 text-xs text-muted-foreground">{row.desc}</td>
+                                        <td className="px-5 py-3 text-xs text-muted-foreground leading-relaxed">{row.desc}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -202,13 +177,13 @@ Authorization: Bearer YOUR_API_KEY`}
                 </section>
 
                 {/* CTA card */}
-                <div className="rounded-xl border border-primary/20 bg-card p-7">
-                    <h3 className="mb-1.5 text-base font-semibold text-foreground">Ready to get started?</h3>
-                    <p className="mb-5 text-sm leading-relaxed text-muted-foreground">
-                        Create a free account and get your first API key in under a minute.
+                <div className="rounded-2xl border border-primary/20 bg-primary/5 p-8 text-center sm:text-left">
+                    <h3 className="mb-2 text-lg font-bold text-foreground tracking-tight">Ready to deploy?</h3>
+                    <p className="mb-6 text-sm leading-relaxed text-muted-foreground max-w-md">
+                        Your first property is free forever. Start building your next great community today.
                     </p>
-                    <Button asChild>
-                        <Link href="/dashboard">Open Dashboard →</Link>
+                    <Button asChild className="rounded-2xl px-8 shadow-lg shadow-primary/10">
+                        <Link href="/dashboard">Access Dashboard</Link>
                     </Button>
                 </div>
             </div>

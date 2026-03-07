@@ -24,7 +24,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${geistMono.variable} dark`}>
+    <html lang="en" className={`dark ${dmSans.variable} ${geistMono.variable}`}>
       <body className="bg-background text-foreground antialiased">
         <Navbar />
         <main className="pt-16">{children}</main>

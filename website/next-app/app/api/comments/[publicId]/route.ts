@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
 import { verifyCommenterToken } from "@/lib/commenter-auth";
+import { cookies } from "next/headers";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -73,8 +74,11 @@ export async function GET(
     const sorting = sp.get("sorting") ?? "top";
     const page = Math.max(parseInt(sp.get("page") ?? "1"), 1);
 
+    const cookieStore = await cookies();
+    const adminClient = await supabase(cookieStore);
+
     // 1 — resolve section
-    const { data: section, error: sErr } = await supabase
+    const { data: section, error: sErr } = await adminClient
         .from("comment_sections")
         .select("id")
         .eq("public_id", publicId)
@@ -91,7 +95,7 @@ export async function GET(
     if (sorting === "new") { orderCol = "created_at"; ascending = false; }
     // "top" sorting is applied after aggregating vote counts (post-fetch)
 
-    const { data: topIds, error: topErr } = await supabase
+    const { data: topIds, error: topErr } = await adminClient
         .from("comments")
         .select("id, created_at")
         .eq("section_id", section.id)
@@ -105,7 +109,7 @@ export async function GET(
     // 3 — fetch vote counts for top-level IDs to enable "top" sort
     const topIdList = (topIds ?? []).map((r) => r.id);
 
-    const { data: topVotes } = await supabase
+    const { data: topVotes } = await adminClient
         .from("comment_vote_counts")
         .select("comment_id, likes, dislikes")
         .in("comment_id", topIdList.length ? topIdList : ["__none__"]);
@@ -153,7 +157,7 @@ export async function GET(
 
     for (let d = 0; d < replyDepth; d++) {
         if (currentParents.size === 0) break;
-        const { data: children } = await supabase
+        const { data: children } = await adminClient
             .from("comments")
             .select("id")
             .in("parent_id", [...currentParents]);
@@ -163,11 +167,11 @@ export async function GET(
     }
 
     // 5 — bulk fetch all relevant comments with commenter info + vote counts
-    const { data: rawComments, error: rcErr } = await supabase
+    const { data: rawComments, error: rcErr } = await adminClient
         .from("comments")
         .select(`
             id, parent_id, body, is_deleted, created_at,
-            commenters ( username, avatar_initial, color ),
+            commenters!comments_commenter_id_fkey ( username, avatar_initial, color ),
             comment_vote_counts ( likes, dislikes )
         `)
         .in("id", [...allIds]);
@@ -181,7 +185,7 @@ export async function GET(
     const voteMap = new Map<string, 1 | -1>();
 
     if (commenter) {
-        const { data: myVotes } = await supabase
+        const { data: myVotes } = await adminClient
             .from("votes")
             .select("comment_id, value")
             .eq("commenter_id", commenter.commenterId)
@@ -199,8 +203,8 @@ export async function GET(
         body: r.body,
         is_deleted: r.is_deleted,
         created_at: r.created_at,
-        likes: r.comment_vote_counts?.likes ?? 0,
-        dislikes: r.comment_vote_counts?.dislikes ?? 0,
+        likes: r.comment_vote_counts?.[0]?.likes ?? 0,
+        dislikes: r.comment_vote_counts?.[0]?.dislikes ?? 0,
         commenters: r.commenters,
     }));
 

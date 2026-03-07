@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -54,10 +55,10 @@ function VoteAction({
             onClick={onClick}
             disabled={disabled}
             className={cn(
-                "font-mono text-[10px] px-2 py-0.5 rounded-md border transition-all disabled:cursor-not-allowed",
+                "font-mono text-[10px] px-2.5 py-0.5 rounded-full border transition-all disabled:cursor-not-allowed",
                 active
                     ? "bg-primary/10 border-primary/30 text-primary"
-                    : "bg-transparent border-transparent text-muted-foreground/50 hover:bg-muted hover:text-foreground"
+                    : "bg-transparent border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
         >
             {label}
@@ -99,8 +100,13 @@ function ReplyBox({
 
     if (!commenterToken) {
         return (
-            <div className="mt-2 mb-4 text-[11px] text-muted-foreground italic">
-                You must be logged in to reply.
+            <div className="mt-2 mb-4 flex flex-col gap-2 items-start text-[11px] text-muted-foreground italic">
+                <span>You must be logged in to reply.</span>
+                <Button asChild size="sm" variant="outline" className="rounded-full text-xs h-8">
+                    <a href={`/login?next=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '/')}`}>
+                        Login
+                    </a>
+                </Button>
             </div>
         );
     }
@@ -113,20 +119,20 @@ function ReplyBox({
                 onChange={(e) => setBody(e.target.value)}
                 rows={3}
                 placeholder="Write a reply…"
-                className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/40"
+                className="w-full resize-none rounded-2xl border border-border bg-muted/30 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary/40 transition-all"
             />
             {error && <p className="text-[11px] text-destructive">{error}</p>}
             <div className="flex gap-2">
                 <button
                     onClick={handleSubmit}
                     disabled={loading || !body.trim()}
-                    className="text-[11px] font-bold px-3 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors"
+                    className="text-[11px] font-bold px-4 py-1.5 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-all shadow-sm shadow-primary/10 active:scale-95"
                 >
                     {loading ? "Posting…" : "Reply"}
                 </button>
                 <button
                     onClick={onCancel}
-                    className="text-[11px] font-medium px-3 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    className="text-[11px] font-medium px-4 py-1.5 rounded-2xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all active:scale-95"
                 >
                     Cancel
                 </button>
@@ -253,7 +259,7 @@ function CommentNode({
                     )}>
                         {comment.author.username}
                     </span>
-                    <span className="font-mono text-[9px] text-muted-foreground/40 leading-none">
+                    <span className="font-mono text-[9px] text-muted-foreground/80 leading-none">
                         • {timeAgo(comment.createdAt)}
                     </span>
                     {collapsed && (
@@ -289,7 +295,7 @@ function CommentNode({
                                     "text-[11px] font-medium px-2 py-0.5 rounded transition-colors",
                                     replying
                                         ? "text-primary bg-primary/10"
-                                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                        : "text-foreground/70 hover:text-foreground hover:bg-muted"
                                 )}
                             >
                                 Reply
@@ -369,8 +375,13 @@ function NewCommentBox({
 
     if (!commenterToken) {
         return (
-            <div className="px-6 py-4 border-t border-border bg-muted/10 text-[12px] text-muted-foreground text-center">
-                <span className="italic">Sign in as a commenter to join the discussion.</span>
+            <div className="px-6 py-6 border-t border-border bg-muted/10 flex flex-col items-center gap-3 text-center">
+                <span className="text-sm text-muted-foreground italic">Sign in as a commenter to join the discussion.</span>
+                <Button asChild className="rounded-2xl px-8 shadow-sm">
+                    <a href={`/login?next=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '/')}`}>
+                        Login with Komently
+                    </a>
+                </Button>
             </div>
         );
     }
@@ -382,16 +393,97 @@ function NewCommentBox({
                 onChange={(e) => setBody(e.target.value)}
                 rows={3}
                 placeholder="Share your thoughts…"
-                className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/40"
+                className="w-full resize-none rounded-2xl border border-border bg-muted/20 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary/40 transition-all"
             />
             {error && <p className="text-[11px] text-destructive">{error}</p>}
             <button
                 onClick={handlePost}
                 disabled={loading || !body.trim()}
-                className="text-[11px] font-bold px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors"
+                className="text-[11px] font-black tracking-widest px-6 py-2 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-all shadow-lg shadow-primary/10 active:scale-95 uppercase"
             >
-                {loading ? "Posting…" : "Post Comment"}
+                {loading ? "POSTING…" : "POST COMMENT"}
             </button>
+        </div>
+    );
+}
+
+// ── CommenterProfileEditor ───────────────────────────────────────────────────
+
+function CommenterProfileEditor({
+    commenterToken,
+    me,
+    onSave,
+    onCancel,
+}: {
+    commenterToken: string;
+    me: any;
+    onSave: (newData: any) => void;
+    onCancel: () => void;
+}) {
+    const [username, setUsername] = useState(me?.username || "");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    async function handleUpdate() {
+        if (!username.trim()) return;
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await fetch("/api/commenters/me/update", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-commenter-token": commenterToken,
+                },
+                body: JSON.stringify({
+                    username: username.trim(),
+                }),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error ?? "Failed to update profile");
+            }
+            const data = await res.json();
+            onSave(data.commenter);
+        } catch (e: any) {
+            setError(e?.message ?? "An error occurred");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    return (
+        <div className="px-6 py-4 border-t border-border bg-muted/10">
+            <div className="flex flex-col gap-4 max-w-sm">
+                <h4 className="label-mono">Commenter Profile</h4>
+                {error && <p className="text-[11px] text-destructive">{error}</p>}
+
+                <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Username</label>
+                    <input
+                        value={username} onChange={e => setUsername(e.target.value)}
+                        className="w-full rounded-xl border border-border bg-muted/30 px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all"
+                    />
+                </div>
+
+                {/* Color/Initial customization removed at user request */}
+
+                <div className="flex gap-2 mt-2">
+                    <button
+                        onClick={handleUpdate}
+                        disabled={loading || !username.trim()}
+                        className="text-[11px] font-bold px-6 py-2 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-all shadow-sm shadow-primary/10 active:scale-95"
+                    >
+                        {loading ? "Saving…" : "Save Changes"}
+                    </button>
+                    <button
+                        onClick={onCancel}
+                        className="text-[11px] font-medium px-6 py-2 rounded-2xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all active:scale-95"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }
@@ -404,25 +496,58 @@ type Sorting = (typeof SORTINGS)[number];
 export function CommentSection({
     publicId,
     pageSize = 5,
-    commenterToken = null,
+    commenterToken: externalToken = null,
 }: {
     publicId: string;
     pageSize?: number;
-    /** Pass the JWT from x-commenter-token storage (localStorage, cookie, etc.) */
+    /** Pass the JWT from x-commenter-token storage (localStorage, cookie, etc.) if external */
     commenterToken?: string | null;
 }) {
     const [data, setData] = useState<ApiResponse | null>(null);
+    const [me, setMe] = useState<{ loggedIn: boolean, token?: string, commenter?: any } | null>(null);
+    const [isAuthLoaded, setIsAuthLoaded] = useState(false);
     const [loading, setLoading] = useState(true);
     const [sorting, setSorting] = useState<Sorting>("top");
     const [page, setPage] = useState(1);
+    const [editingProfile, setEditingProfile] = useState(false);
+
+    const activeToken = me?.token || externalToken;
+
+    useEffect(() => {
+        async function fetchMe() {
+            try {
+                const res = await fetch("/api/commenters/me");
+                if (res.ok) {
+                    setMe(await res.json());
+                } else {
+                    setMe({ loggedIn: false });
+                }
+            } catch {
+                setMe({ loggedIn: false });
+            } finally {
+                setIsAuthLoaded(true);
+            }
+        }
+
+        // If externalToken provided, we assume auth is handled externally 
+        // but we still want to ensure we wait for explicit confirmation of state
+        if (externalToken !== null) {
+            setMe({ loggedIn: true, token: externalToken });
+            setIsAuthLoaded(true);
+        } else {
+            fetchMe();
+        }
+    }, [externalToken]);
 
     const fetchComments = useCallback(async () => {
+        if (!isAuthLoaded) return; // Wait for me state determination
+
         setLoading(true);
         try {
             const res = await fetch(
                 `/api/comments/${publicId}?pageSize=${pageSize}&sorting=${sorting}&page=${page}&replyDepth=2`,
-                commenterToken
-                    ? { headers: { "x-commenter-token": commenterToken } }
+                activeToken
+                    ? { headers: { "x-commenter-token": activeToken } }
                     : {}
             );
             if (res.ok) setData(await res.json());
@@ -431,7 +556,7 @@ export function CommentSection({
         } finally {
             setLoading(false);
         }
-    }, [publicId, pageSize, sorting, page, commenterToken]);
+    }, [publicId, pageSize, sorting, page, activeToken, isAuthLoaded]);
 
     useEffect(() => { fetchComments(); }, [fetchComments]);
 
@@ -469,7 +594,7 @@ export function CommentSection({
     }
 
     return (
-        <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+        <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden flex flex-col">
             {/* Toolbar */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30">
                 <div className="flex items-center gap-3">
@@ -481,13 +606,13 @@ export function CommentSection({
                     )}
                 </div>
 
-                <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
+                <div className="flex items-center gap-1 bg-muted p-1 rounded-xl">
                     {SORTINGS.map((s) => (
                         <button
                             key={s}
                             onClick={() => { setSorting(s); setPage(1); }}
                             className={cn(
-                                "px-3 py-1 text-[11px] font-bold capitalize rounded-md transition-all",
+                                "px-4 py-1.5 text-[11px] font-bold capitalize rounded-lg transition-all",
                                 sorting === s
                                     ? "bg-card text-foreground shadow-sm"
                                     : "text-muted-foreground hover:text-foreground"
@@ -500,11 +625,11 @@ export function CommentSection({
             </div>
 
             {/* Comments list */}
-            <div className="p-6 min-h-[300px]">
+            <div className="p-6 min-h-[300px] flex-1">
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20 gap-3">
                         <div className="size-6 border-2 border-primary/30 border-t-primary animate-spin rounded-full" />
-                        <span className="text-xs font-mono text-muted-foreground/40 animate-pulse">
+                        <span className="text-xs font-mono text-muted-foreground/80 animate-pulse">
                             awaiting response…
                         </span>
                     </div>
@@ -524,7 +649,7 @@ export function CommentSection({
                                 <CommentNode
                                     comment={comment}
                                     depth={0}
-                                    commenterToken={commenterToken}
+                                    commenterToken={activeToken}
                                     publicId={publicId}
                                     onReplyPosted={handleReplyPosted}
                                 />
@@ -533,13 +658,6 @@ export function CommentSection({
                     </div>
                 )}
             </div>
-
-            {/* Post new comment */}
-            <NewCommentBox
-                commenterToken={commenterToken}
-                publicId={publicId}
-                onPosted={handleNewComment}
-            />
 
             {/* Pagination */}
             {data && data.totalPages > 1 && (
@@ -551,7 +669,7 @@ export function CommentSection({
                     >
                         PREVIOUS
                     </button>
-                    <span className="font-mono text-[10px] text-muted-foreground/40">
+                    <span className="font-mono text-[10px] text-muted-foreground/80">
                         {page} <span className="mx-1">/</span> {data.totalPages}
                     </span>
                     <button
@@ -563,6 +681,46 @@ export function CommentSection({
                     </button>
                 </div>
             )}
+
+            {/* User Profile Bar (if logged in) */}
+            {me?.loggedIn && me?.commenter && !editingProfile && (
+                <div className="px-6 py-3 border-t border-border bg-muted/10 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className="size-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white uppercase" style={{ background: me.commenter.color }}>
+                            {me.commenter.avatar_initial}
+                        </div>
+                        <span className="text-xs text-foreground/80">
+                            Commenting as <span className="font-bold text-foreground">{me.commenter.username}</span>
+                        </span>
+                    </div>
+                    <button
+                        onClick={() => setEditingProfile(true)}
+                        className="text-[10px] font-bold text-foreground/80 hover:text-foreground transition-colors uppercase tracking-wider"
+                    >
+                        Edit Profile
+                    </button>
+                </div>
+            )}
+
+            {/* Profile Editor */}
+            {editingProfile && me?.commenter && activeToken && (
+                <CommenterProfileEditor
+                    commenterToken={activeToken}
+                    me={me.commenter}
+                    onSave={(newData) => {
+                        setMe({ ...me, commenter: newData });
+                        setEditingProfile(false);
+                    }}
+                    onCancel={() => setEditingProfile(false)}
+                />
+            )}
+
+            {/* Post new comment */}
+            <NewCommentBox
+                commenterToken={activeToken}
+                publicId={publicId}
+                onPosted={handleNewComment}
+            />
         </div>
     );
 }

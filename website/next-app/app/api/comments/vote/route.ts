@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
 import { verifyCommenterToken } from "@/lib/commenter-auth";
+import { cookies } from "next/headers";
 
 export async function POST(request: NextRequest) {
     // 1 — auth
@@ -43,8 +44,11 @@ export async function POST(request: NextRequest) {
         );
     }
 
+    const cookieStore = await cookies();
+    const adminClient = await supabase(cookieStore);
+
     // 3 — check if comment exists
-    const { data: comment, error: cErr } = await supabase
+    const { data: comment, error: cErr } = await adminClient
         .from("comments")
         .select("id")
         .eq("id", commentId)
@@ -56,7 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4 — look up existing vote
-    const { data: existing } = await supabase
+    const { data: existing } = await adminClient
         .from("votes")
         .select("value")
         .eq("commenter_id", commenter.commenterId)
@@ -67,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     if (!existing) {
         // no vote yet → insert
-        const { error: insErr } = await supabase
+        const { error: insErr } = await adminClient
             .from("votes")
             .insert({ commenter_id: commenter.commenterId, comment_id: commentId, value });
         if (insErr) {
@@ -77,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     } else if (existing.value === value) {
         // same vote → retract (toggle off)
-        const { error: delErr } = await supabase
+        const { error: delErr } = await adminClient
             .from("votes")
             .delete()
             .eq("commenter_id", commenter.commenterId)
@@ -89,7 +93,7 @@ export async function POST(request: NextRequest) {
 
     } else {
         // different vote → update
-        const { error: updErr } = await supabase
+        const { error: updErr } = await adminClient
             .from("votes")
             .update({ value })
             .eq("commenter_id", commenter.commenterId)
@@ -101,7 +105,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 5 — return fresh counts
-    const { data: counts } = await supabase
+    const { data: counts } = await adminClient
         .from("comment_vote_counts")
         .select("likes, dislikes")
         .eq("comment_id", commentId)

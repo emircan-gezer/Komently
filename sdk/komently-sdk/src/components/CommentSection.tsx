@@ -1,327 +1,749 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Comment } from '../types';
-import { KomentlyClient } from '../api-client';
-// Uses global classNames like "komently-form". See README to import CSS globally.
-import { Button } from './ui/Button';
-import { Textarea } from './ui/Textarea';
-import { CommentForm } from './internal/CommentForm';
-import { CommentItem } from './internal/CommentItem';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
 
-export type ReactionHandler = (commentId: string, state: -1 | 0 | 1) => Promise<void> | void;
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export interface CommentAuthor {
+  username: string;
+  avatarInitial: string;
+  color: string;
+}
+
+export interface CommentData {
+  id: string;
+  author: CommentAuthor;
+  body: string;
+  likes: number;
+  dislikes: number;
+  myVote: 1 | -1 | 0;
+  createdAt: string;
+  replies?: CommentData[];
+}
+
+export interface ApiResponse {
+  comments: CommentData[];
+  totalPages: number;
+  totalCount: number;
+  page: number;
+}
 
 export interface CommentSectionProps {
   publicId: string;
-  apiKey: string;
+  pageSize?: number;
+  commenterToken?: string | null;
   baseUrl?: string;
-
-  // Optional custom renderers (for full control)
-  renderComment?: (args: {
-    comment: Comment;
-    onReply: (parentId: string, text: string) => Promise<void>;
-    onDelete?: (commentId: string) => Promise<void>;
-    onLike?: ReactionHandler;
-    onDislike?: ReactionHandler;
-    currentUserId?: string | null;
-  }) => React.ReactNode;
-
-  renderReply?: (args: {
-    comment: Comment;
-    onReply: (parentId: string, text: string) => Promise<void>;
-    onDelete?: (commentId: string) => Promise<void>;
-    onLike?: ReactionHandler;
-    onDislike?: ReactionHandler;
-    currentUserId?: string | null;
-  }) => React.ReactNode;
-
-  renderForm?: (args: {
-    onSubmit: (text: string) => Promise<void>;
-    onLogin: () => Promise<void>;
-    isAuthenticated: boolean;
-    currentUser: {
-      id: string | null;
-      email: string | null;
-      username: string | null;
-      firstName: string | null;
-      lastName: string | null;
-      avatarUrl: string | null;
-    } | null;
-    submitting: boolean;
-    onLogout?: () => void;
-    allowGuestComments?: boolean;
-  }) => React.ReactNode;
-
-  // Optional handlers to override built-ins
-  onLike?: ReactionHandler;
-  onDislike?: ReactionHandler;
-  onDelete?: (commentId: string) => Promise<void>;
-  onEdit?: (commentId: string, text: string) => Promise<void>;
+  onLogin?: () => void;
 }
 
-// Internal defaults are split into separate files for easier swapping and tree-shaking.
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-export function CommentSection(props: CommentSectionProps) {
-  const { publicId, apiKey, baseUrl } = props;
+function timeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  const h = Math.floor(m / 60);
+  const d = Math.floor(h / 24);
+  if (d > 0) return `${d}d`;
+  if (h > 0) return `${h}h`;
+  if (m > 0) return `${m}m`;
+  return "just now";
+}
 
-  const client = useMemo(() => new KomentlyClient({ apiKey, baseUrl }), [apiKey, baseUrl]);
+function cn(...classes: (string | boolean | undefined | null)[]) {
+  return classes.filter(Boolean).join(" ");
+}
 
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [loading, setLoading] = useState(true);
+// ── VoteAction ────────────────────────────────────────────────────────────────
+
+function VoteAction({
+  active,
+  onClick,
+  label,
+  disabled,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "komently-vote-btn",
+        active && "komently-vote-btn-active"
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+// ── ReplyBox ──────────────────────────────────────────────────────────────────
+
+function ReplyBox({
+  onSubmit,
+  onCancel,
+  commenterToken,
+  onLogin,
+}: {
+  onSubmit: (body: string) => Promise<void>;
+  onCancel: () => void;
+  commenterToken: string | null;
+  onLogin?: () => void;
+}) {
+  const [body, setBody] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [collapsedIds, setCollapsedIds] = useState<Record<string, boolean>>({});
-  const toggleCollapse = useCallback((id: string) => {
-    setCollapsedIds((prev) => ({ ...prev, [id]: !prev[id] }));
-  }, []);
-  const [currentUser, setCurrentUser] = useState<{
-    id: string | null;
-    email: string | null;
-    username: string | null;
-    firstName: string | null;
-    lastName: string | null;
-    avatarUrl: string | null;
-  } | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const [viewerId, setViewerId] = useState<string | null>(null);
-  const [sectionSettings, setSectionSettings] = useState<{ allow_guest_comments?: boolean; [key: string]: any }>({});
+  useEffect(() => { textareaRef.current?.focus(); }, []);
 
-  const load = useCallback(async () => {
+  async function handleSubmit() {
+    if (!body.trim()) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await client.getComments({ publicId, limit: 20, replyDepth: 2 });
-      setComments(data.comments);
-      setNextCursor(data.nextCursor);
-      if (data.viewerId) setViewerId(data.viewerId);
-      if (data.settings) setSectionSettings(data.settings);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load comments');
+      await onSubmit(body.trim());
+      setBody("");
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to post reply");
     } finally {
       setLoading(false);
     }
-  }, [client, publicId]);
+  }
 
-  const refreshAuth = useCallback(async () => {
-    const token = await client.getCommenterToken();
-    const authed = Boolean(token);
-    setIsAuthenticated(authed);
-    if (authed) {
-      const user = await client.getCurrentUser();
-      setCurrentUser(user);
-      // viewerId will be set from API response in load()
-      // Also set it from user.id (which is now Clerk ID) for immediate use
-      if (user?.id) setViewerId(user.id);
-    } else {
-      setCurrentUser(null);
-      setViewerId(null);
-    }
-  }, [client]);
-
-  useEffect(() => {
-    load();
-    refreshAuth();
-  }, [load, refreshAuth]);
-
-  const handleLogin = useCallback(async () => {
-    const result = await client.login();
-    if (result?.linkedComments && result.linkedComments > 0) {
-      // Reload comments to show updated user info for linked guest comments
-      await load();
-    }
-    await refreshAuth();
-  }, [client, refreshAuth, load]);
-
-  const handleCreate = useCallback(
-    async (text: string) => {
-      setSubmitting(true);
-      try {
-        const newComment = await client.createComment(publicId, text);
-        setComments((prev) => [newComment, ...prev]);
-      } finally {
-        setSubmitting(false);
-      }
-    },
-    [client, publicId]
-  );
-
-  const handleReply = useCallback(
-    async (parentId: string, text: string) => {
-      const reply = await client.createComment(publicId, text, { replyTo: parentId });
-      setComments((prev) => [reply, ...prev]);
-    },
-    [client, publicId]
-  );
-
-  const loadMore = useCallback(async () => {
-    if (!nextCursor) return;
-    setLoadingMore(true);
-    try {
-      const data = await client.getComments({ publicId, limit: 20, cursor: nextCursor });
-      setComments((prev) => [...prev, ...data.comments]);
-      setNextCursor(data.nextCursor);
-      if (data.viewerId) setViewerId(data.viewerId);
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [client, publicId, nextCursor]);
-
-  // Nested replies are included by API up to replyDepth; no client-side replies pagination
-
-  const handleLike: ReactionHandler = useCallback(
-    async (commentId, state) => {
-      if (props.onLike) return props.onLike(commentId, state);
-      // Optimistic update: adjust like/dislike counts and likeState
-      setComments((prev) => {
-        const byId = new Map(prev.map((c) => [c.id, c]));
-        const target = byId.get(commentId);
-        if (!target) return prev;
-        const prevState = target.likeState ?? 0;
-        const reactions = target.reactions || { likes: 0, dislikes: 0, total: 0 };
-        let { likes, dislikes } = reactions;
-        // Remove previous
-        if (prevState === 1) likes = Math.max(0, likes - 1);
-        if (prevState === -1) dislikes = Math.max(0, dislikes - 1);
-        // Apply new
-        if (state === 1) likes += 1;
-        if (state === -1) dislikes += 1;
-        const total = likes - dislikes;
-        const updated = { ...target, likeState: state, reactions: { likes, dislikes, total } } as Comment;
-        byId.set(commentId, updated);
-        return prev.map((c) => (c.id === commentId ? updated : c));
-      });
-      try {
-        await client.setReaction(commentId, state);
-      } catch (e) {
-        // Revert on failure
-        setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, likeState: 0 } : c)));
-      }
-    },
-    [client, props]
-  );
-
-  const handleDislike: ReactionHandler = useCallback(
-    async (commentId, state) => {
-      if (props.onDislike) return props.onDislike(commentId, state);
-      // Alias to handleLike with -1
-      await handleLike(commentId, state);
-    },
-    [handleLike, props]
-  );
-
-  const handleEdit = useCallback(
-    async (commentId: string, text: string) => {
-      if (props.onEdit) return props.onEdit(commentId, text);
-      const updated = await client.updateComment(commentId, text);
-      setComments((prev) => {
-        const updateComment = (c: Comment): Comment => {
-          if (c.id === commentId) {
-            return { ...updated, replies: c.replies };
-          }
-          if (c.replies) {
-            return { ...c, replies: c.replies.map(updateComment) };
-          }
-          return c;
-        };
-        return prev.map(updateComment);
-      });
-    },
-    [client, props]
-  );
-
-  const handleDelete = useCallback(
-    async (commentId: string) => {
-      if (props.onDelete) return props.onDelete(commentId);
-      await client.deleteComment(commentId);
-      // Mark as deleted instead of removing
-      setComments((prev) => {
-        const markDeleted = (c: Comment): Comment => {
-          if (c.id === commentId) {
-            return { ...c, deleted_at: new Date().toISOString(), deletion_type: 'commenter' as const };
-          }
-          if (c.replies) {
-            return { ...c, replies: c.replies.map(markDeleted) };
-          }
-          return c;
-        };
-        return prev.map(markDeleted);
-      });
-    },
-    [client, props]
-  );
-
-  const renderOne = (comment: Comment) => {
-    const common = {
-      comment,
-      onReply: handleReply,
-      onDelete: handleDelete,
-      onEdit: handleEdit,
-      onLike: handleLike,
-      onDislike: handleDislike,
-      collapsed: Boolean(collapsedIds[comment.id]),
-      toggleCollapse,
-      currentUserId: viewerId,
-    } as const;
-
-    if (props.renderComment) return props.renderComment(common);
-    return <CommentItem {...common} />;
-  };
-
-  const renderChildren = (node: Comment | undefined): React.ReactNode => {
-    const children = node?.replies || [];
-    if (!children || children.length === 0) return null;
+  if (!commenterToken) {
     return (
-      <div className="komently-replies">
-        {children.map((r) => (
-          <div key={r.id}>
-            {renderOne(r)}
-            {!collapsedIds[r.id] && renderChildren(r)}
-          </div>
-        ))}
+      <div className="komently-auth-prompt">
+        <span>You must be logged in to reply.</span>
+        <button
+          onClick={onLogin}
+          className="komently-button-primary-sm"
+          style={{ height: '32px' }}
+        >
+          Login
+        </button>
       </div>
     );
-  };
+  }
 
   return (
-    <div className="komently-comment-section">
-      {(props.renderForm || ((args) => <CommentForm {...args} />))({
-        onSubmit: handleCreate,
-        onLogin: handleLogin,
-        isAuthenticated,
-        currentUser,
-        submitting,
-        onLogout: () => client.logout(),
-        allowGuestComments: sectionSettings.allow_guest_comments ?? false,
-      })}
-      {loading && <div className="komently-loading">Loading comments…</div>}
-      {error && <div className="komently-error">{error}</div>}
-      {!loading && !error && comments.length === 0 && (
-        <div className="komently-empty">No comments yet. Be the first to comment!</div>
-      )}
-
-      <div className="komently-replies">
-        {comments
-          .filter((c) => !c.reply_to)
-          .map((c) => (
-            <div key={c.id}>
-              {renderOne(c)}
-              {/* Render replies recursively */}
-              {!collapsedIds[c.id] && renderChildren(c)}
-            </div>
-          ))}
+    <div className="komently-reply-box-container">
+      <textarea
+        ref={textareaRef}
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        rows={3}
+        placeholder="Write a reply…"
+        className="komently-textarea"
+      />
+      {error && <p className="komently-error-text">{error}</p>}
+      <div className="komently-reply-actions">
+        <button
+          onClick={handleSubmit}
+          disabled={loading || !body.trim()}
+          className="komently-button-primary-sm"
+        >
+          {loading ? "Posting…" : "Reply"}
+        </button>
+        <button
+          onClick={onCancel}
+          className="komently-button-ghost-sm"
+        >
+          Cancel
+        </button>
       </div>
-      {nextCursor && (
-        <div className="komently-actions">
-          <Button type="button" onClick={loadMore} disabled={loadingMore}>
-            {loadingMore ? 'Loading…' : 'Load more comments'}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
 
-export default CommentSection;
+// ── CommentNode ───────────────────────────────────────────────────────────────
 
+function CommentNode({
+  comment: initialComment,
+  depth = 0,
+  commenterToken,
+  publicId,
+  baseUrl,
+  onReplyPosted,
+  onLogin,
+}: {
+  comment: CommentData;
+  depth?: number;
+  commenterToken: string | null;
+  publicId: string;
+  baseUrl: string;
+  onReplyPosted?: (parentId: string, newComment: CommentData) => void;
+  onLogin?: () => void;
+}) {
+  const [comment, setComment] = useState(initialComment);
+  const [collapsed, setCollapsed] = useState(false);
+  const [replying, setReplying] = useState(false);
+  const [voting, setVoting] = useState(false);
 
+  useEffect(() => { setComment(initialComment); }, [initialComment]);
+
+  async function handleVote(dir: 1 | -1) {
+    if (!commenterToken || voting) return;
+    setVoting(true);
+
+    const prev = { likes: comment.likes, dislikes: comment.dislikes, myVote: comment.myVote };
+    const next = { ...comment };
+
+    if (comment.myVote === dir) {
+      next.myVote = 0;
+      dir === 1 ? next.likes-- : next.dislikes--;
+    } else {
+      if (comment.myVote === 1) next.likes--;
+      if (comment.myVote === -1) next.dislikes--;
+      next.myVote = dir;
+      dir === 1 ? next.likes++ : next.dislikes++;
+    }
+    setComment(next);
+
+    try {
+      const res = await fetch(`${baseUrl}/api/comments/vote`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-commenter-token": commenterToken,
+        },
+        body: JSON.stringify({ commentId: comment.id, value: dir }),
+      });
+      if (!res.ok) throw new Error("Vote failed");
+      const data = await res.json();
+      setComment((c) => ({ ...c, likes: data.likes, dislikes: data.dislikes, myVote: data.myVote }));
+    } catch {
+      setComment((c) => ({ ...c, ...prev }));
+    } finally {
+      setVoting(false);
+    }
+  }
+
+  async function handleReplySubmit(body: string) {
+    if (!commenterToken) return;
+    const res = await fetch(`${baseUrl}/api/comments/${publicId}/post`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-commenter-token": commenterToken,
+      },
+      body: JSON.stringify({ body, parentId: comment.id }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error ?? "Failed to post reply");
+    }
+    const newComment: CommentData = await res.json();
+    onReplyPosted?.(comment.id, newComment);
+    setReplying(false);
+  }
+
+  const hasReplies = (comment.replies?.length ?? 0) > 0;
+
+  return (
+    <div className="komently-comment-item">
+      <div
+        className="komently-avatar-container"
+        onClick={() => setCollapsed(!collapsed)}
+      >
+        <div
+          className={cn(
+            "komently-avatar",
+            depth === 0 ? "size-lg" : "size-md",
+            collapsed && "komently-avatar-collapsed"
+          )}
+          style={{ background: comment.author.color }}
+        >
+          {comment.author.avatarInitial}
+        </div>
+        {!collapsed && (
+          <div className="komently-thread-line" />
+        )}
+      </div>
+
+      <div className="komently-comment-content">
+        <div
+          className="komently-comment-header"
+          onClick={() => setCollapsed(!collapsed)}
+        >
+          <span className={cn(
+            "komently-username",
+            collapsed && "komently-username-collapsed"
+          )}>
+            {comment.author.username}
+          </span>
+          <span className="komently-timestamp">
+            • {timeAgo(comment.createdAt)}
+          </span>
+          {collapsed && (
+            <span className="komently-collapsed-badge">
+              [{hasReplies ? (comment.replies!.length + 1) : 1} comments hidden]
+            </span>
+          )}
+        </div>
+
+        {!collapsed && (
+          <div className="komently-body-reveal">
+            <p className="komently-comment-body">
+              {comment.body}
+            </p>
+
+            <div className="komently-comment-actions">
+              <VoteAction
+                active={comment.myVote === 1}
+                onClick={() => handleVote(1)}
+                label={`▲ ${comment.likes}`}
+                disabled={!commenterToken || voting}
+              />
+              <VoteAction
+                active={comment.myVote === -1}
+                onClick={() => handleVote(-1)}
+                label={`▼ ${comment.dislikes}`}
+                disabled={!commenterToken || voting}
+              />
+              <div className="komently-divider" />
+              <button
+                onClick={() => setReplying((r) => !r)}
+                className={cn(
+                  "komently-reply-trigger",
+                  replying && "komently-reply-trigger-active"
+                )}
+              >
+                Reply
+              </button>
+            </div>
+
+            {replying && (
+              <ReplyBox
+                commenterToken={commenterToken}
+                onSubmit={handleReplySubmit}
+                onCancel={() => setReplying(false)}
+                onLogin={onLogin}
+              />
+            )}
+
+            {hasReplies && (
+              <div className="komently-comment-replies" style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {comment.replies!.map((reply) => (
+                  <CommentNode
+                    key={reply.id}
+                    comment={reply}
+                    depth={depth + 1}
+                    commenterToken={commenterToken}
+                    publicId={publicId}
+                    baseUrl={baseUrl}
+                    onReplyPosted={onReplyPosted}
+                    onLogin={onLogin}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── NewCommentBox ─────────────────────────────────────────────────────────────
+
+function NewCommentBox({
+  commenterToken,
+  publicId,
+  baseUrl,
+  onPosted,
+  onLogin,
+}: {
+  commenterToken: string | null;
+  publicId: string;
+  baseUrl: string;
+  onPosted: (comment: CommentData) => void;
+  onLogin?: () => void;
+}) {
+  const [body, setBody] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handlePost() {
+    if (!body.trim() || !commenterToken) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${baseUrl}/api/comments/${publicId}/post`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-commenter-token": commenterToken,
+        },
+        body: JSON.stringify({ body: body.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Failed to post");
+      }
+      const newComment: CommentData = await res.json();
+      onPosted(newComment);
+      setBody("");
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to post comment");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (!commenterToken) {
+    return (
+      <div className="komently-login-prompt">
+        <span className="komently-login-text">Sign in as a commenter to join the discussion.</span>
+        <button onClick={onLogin} className="komently-button-primary">
+          Login with Komently
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="komently-new-comment-container">
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        rows={3}
+        placeholder="Share your thoughts…"
+        className="komently-textarea"
+      />
+      {error && <p className="komently-error-text">{error}</p>}
+      <button
+        onClick={handlePost}
+        disabled={loading || !body.trim()}
+        className="komently-button-primary-heavy"
+      >
+        {loading ? "POSTING…" : "POST COMMENT"}
+      </button>
+    </div>
+  );
+}
+
+// ── CommenterProfileEditor ───────────────────────────────────────────────────
+
+function CommenterProfileEditor({
+  commenterToken,
+  me,
+  baseUrl,
+  onSave,
+  onCancel,
+}: {
+  commenterToken: string;
+  me: any;
+  baseUrl: string;
+  onSave: (newData: any) => void;
+  onCancel: () => void;
+}) {
+  const [username, setUsername] = useState(me?.username || "");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleUpdate() {
+    if (!username.trim()) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${baseUrl}/api/commenters/me/update`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-commenter-token": commenterToken,
+        },
+        body: JSON.stringify({
+          username: username.trim(),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Failed to update profile");
+      }
+      const data = await res.json();
+      onSave(data.commenter);
+    } catch (e: any) {
+      setError(e?.message ?? "An error occurred");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="komently-profile-editor">
+      <div className="komently-profile-editor-content">
+        <h4 className="komently-profile-editor-title">Commenter Profile</h4>
+        {error && <p className="komently-error-text">{error}</p>}
+
+        <div className="komently-input-group">
+          <label className="komently-label">Username</label>
+          <input
+            value={username} onChange={e => setUsername(e.target.value)}
+            className="komently-input"
+          />
+        </div>
+
+        <div className="komently-profile-editor-actions">
+          <button
+            onClick={handleUpdate}
+            disabled={loading || !username.trim()}
+            className="komently-button-primary-sm"
+          >
+            {loading ? "Saving…" : "Save Changes"}
+          </button>
+          <button
+            onClick={onCancel}
+            className="komently-button-ghost-sm"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── CommentSection (main export) ──────────────────────────────────────────────
+
+const SORTINGS = ["top", "new", "old"] as const;
+type Sorting = (typeof SORTINGS)[number];
+
+export function CommentSection({
+  publicId,
+  pageSize = 5,
+  commenterToken: externalToken = null,
+  baseUrl = "https://komently.io", // Default base URL
+  onLogin,
+}: CommentSectionProps) {
+  const [data, setData] = useState<ApiResponse | null>(null);
+  const [me, setMe] = useState<{ loggedIn: boolean, token?: string, commenter?: any } | null>(null);
+  const [isAuthLoaded, setIsAuthLoaded] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [sorting, setSorting] = useState<Sorting>("top");
+  const [page, setPage] = useState(1);
+  const [editingProfile, setEditingProfile] = useState(false);
+
+  const activeToken = me?.token || externalToken;
+
+  useEffect(() => {
+    async function fetchMe() {
+      try {
+        const res = await fetch(`${baseUrl}/api/commenters/me`);
+        if (res.ok) {
+          setMe(await res.json());
+        } else {
+          setMe({ loggedIn: false });
+        }
+      } catch {
+        setMe({ loggedIn: false });
+      } finally {
+        setIsAuthLoaded(true);
+      }
+    }
+
+    if (externalToken !== null) {
+      setMe({ loggedIn: true, token: externalToken });
+      setIsAuthLoaded(true);
+    } else {
+      fetchMe();
+    }
+  }, [externalToken, baseUrl]);
+
+  const fetchComments = useCallback(async () => {
+    if (!isAuthLoaded) return;
+
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `${baseUrl}/api/comments/${publicId}?pageSize=${pageSize}&sorting=${sorting}&page=${page}&replyDepth=2`,
+        activeToken
+          ? { headers: { "x-commenter-token": activeToken } }
+          : {}
+      );
+      if (res.ok) setData(await res.json());
+    } catch (e) {
+      console.error("Failed to fetch comments", e);
+    } finally {
+      setLoading(false);
+    }
+  }, [publicId, pageSize, sorting, page, activeToken, isAuthLoaded, baseUrl]);
+
+  useEffect(() => { fetchComments(); }, [fetchComments]);
+
+  function handleNewComment(newComment: CommentData) {
+    setData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        totalCount: prev.totalCount + 1,
+        comments: [newComment, ...prev.comments],
+      };
+    });
+  }
+
+  function handleReplyPosted(parentId: string, newReply: CommentData) {
+    setData((prev) => {
+      if (!prev) return prev;
+
+      function insertReply(comments: CommentData[]): CommentData[] {
+        return comments.map((c) => {
+          if (c.id === parentId) {
+            return { ...c, replies: [...(c.replies ?? []), newReply] };
+          }
+          if (c.replies?.length) {
+            return { ...c, replies: insertReply(c.replies) };
+          }
+          return c;
+        });
+      }
+
+      return { ...prev, comments: insertReply(prev.comments) };
+    });
+  }
+
+  const defaultOnLogin = () => {
+    if (typeof window !== 'undefined') {
+      window.location.href = `${baseUrl}/login?next=${encodeURIComponent(window.location.href)}`;
+    }
+  };
+
+  const handleLoginClick = onLogin || defaultOnLogin;
+
+  return (
+    <div className="komently-sdk-root">
+      <div className="komently-container">
+        {/* Toolbar */}
+        <div className="komently-toolbar">
+          <div className="komently-toolbar-title">
+            <h3 className="komently-title">Discussion</h3>
+            {data && (
+              <span className="komently-count">
+                {data.totalCount}
+              </span>
+            )}
+          </div>
+
+          <div className="komently-sorting-tabs">
+            {SORTINGS.map((s) => (
+              <button
+                key={s}
+                onClick={() => { setSorting(s); setPage(1); }}
+                className={cn(
+                  "komently-sort-tab",
+                  sorting === s && "komently-sort-tab-active"
+                )}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Comments list */}
+        <div className="komently-list">
+          {loading ? (
+            <div className="komently-loading-state">
+              <div className="komently-spinner" />
+              <span className="komently-loading-text">
+                awaiting response…
+              </span>
+            </div>
+          ) : data?.comments.length === 0 ? (
+            <div className="komently-empty-state">
+              <p>
+                The silence here is loud. Be the first to speak.
+              </p>
+            </div>
+          ) : (
+            <div className="komently-comments-wrapper">
+              {data?.comments.map((comment, i, arr) => (
+                <div
+                  key={comment.id}
+                  className={cn(i < arr.length - 1 && "komently-border-bottom", "komently-comment-node-wrapper")}
+                >
+                  <CommentNode
+                    comment={comment}
+                    depth={0}
+                    commenterToken={activeToken}
+                    publicId={publicId}
+                    baseUrl={baseUrl}
+                    onReplyPosted={handleReplyPosted}
+                    onLogin={handleLoginClick}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Pagination */}
+        {data && data.totalPages > 1 && (
+          <div className="komently-pagination">
+            <button
+              disabled={page === 1}
+              onClick={() => setPage((p) => p - 1)}
+              className="komently-pagination-btn"
+            >
+              PREVIOUS
+            </button>
+            <span className="komently-pagination-info">
+              {page} / {data.totalPages}
+            </span>
+            <button
+              disabled={page === data.totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              className="komently-pagination-btn"
+            >
+              NEXT
+            </button>
+          </div>
+        )}
+
+        {/* User Profile Bar (if logged in) */}
+        {me?.loggedIn && me?.commenter && !editingProfile && (
+          <div className="komently-profile-bar">
+            <div className="komently-profile-info">
+              <div className="komently-profile-avatar" style={{ background: me.commenter.color }}>
+                {me.commenter.avatar_initial}
+              </div>
+              <span className="komently-profile-text">
+                Commenting as <strong>{me.commenter.username}</strong>
+              </span>
+            </div>
+            <button
+              onClick={() => setEditingProfile(true)}
+              className="komently-edit-profile-btn"
+            >
+              Edit Profile
+            </button>
+          </div>
+        )}
+
+        {/* Profile Editor */}
+        {editingProfile && me?.commenter && activeToken && (
+          <CommenterProfileEditor
+            commenterToken={activeToken}
+            me={me.commenter}
+            baseUrl={baseUrl}
+            onSave={(newData) => {
+              setMe({ ...me, commenter: newData });
+              setEditingProfile(false);
+            }}
+            onCancel={() => setEditingProfile(false)}
+          />
+        )}
+
+        {/* Post new comment */}
+        <NewCommentBox
+          commenterToken={activeToken}
+          publicId={publicId}
+          baseUrl={baseUrl}
+          onPosted={handleNewComment}
+          onLogin={handleLoginClick}
+        />
+      </div>
+    </div>
+  );
+}

@@ -1,32 +1,16 @@
 export interface Comment {
   id: string;
-  comment: string;
-  reply_to: string | null;
-  created_at: string;
-  updated_at: string;
-  edited_at?: string | null;
-  deleted_at?: string | null;
-  deleted_by?: string | null;
-  deletion_type?: 'commenter' | 'moderator' | null;
-  user_id: string | null;
-  metadata?: {
-    guest_name?: string | null;
-    [key: string]: unknown;
+  author: {
+    username: string;
+    avatarInitial: string;
+    color: string;
   };
-  author?: {
-    username: string | null;
-    firstName: string | null;
-    lastName: string | null;
-    avatarUrl: string | null;
-  } | null;
+  body: string;
+  likes: number;
+  dislikes: number;
+  myVote: 1 | -1 | 0;
+  createdAt: string;
   replies?: Comment[];
-  reactions?: {
-    likes: number;
-    dislikes: number;
-    total: number;
-  };
-  likeState?: -1 | 0 | 1;
-  isShared?: boolean;
 }
 
 export interface CommentSection {

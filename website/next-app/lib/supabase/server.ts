@@ -1,12 +1,12 @@
 import { createServerClient } from '@supabase/ssr'
+import { ReadonlyRequestCookies } from 'next/dist/server/web/spec-extension/adapters/request-cookies'
 import { cookies } from 'next/headers'
 
 /**
  * If using Fluid compute: Don't put this client in a global variable. Always create a new client within each
  * function when using it.
  */
-export async function createClient() {
-    const cookieStore = await cookies()
+export async function createClient(cookieStore: ReadonlyRequestCookies) {
 
     return createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,4 +31,4 @@ export async function createClient() {
         }
     )
 }
-export const supabase = await createClient();
+export const supabase = (cookies: ReadonlyRequestCookies) => createClient(cookies);

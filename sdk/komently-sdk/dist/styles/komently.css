@@ -1,494 +1,708 @@
-/* Komently SDK Styles - Matching Waitlist UI Design */
-
 :root {
-  --komently-card-bg: hsl(0, 0%, 100%);
-  --komently-border: hsl(214.3, 31.8%, 85%, 0.6);
-  --komently-text: hsl(222.2, 84%, 4.9%);
-  --komently-text-muted: hsl(215.4, 16.3%, 46.9%);
-  --komently-primary: hsl(217, 91%, 60%);
-  --komently-muted: hsl(210, 40%, 96.1%);
-  --komently-input-bg: hsl(0, 0%, 100%);
+  /* Colors */
+  --komently-primary: oklch(0.537 0.251 264);
+  --komently-primary-foreground: oklch(1 0 0);
+  --komently-background: oklch(0.985 0 0);
+  --komently-foreground: oklch(0.145 0 0);
+  --komently-card: oklch(1 0 0);
+  --komently-card-foreground: oklch(0.145 0 0);
+  --komently-muted: oklch(0.97 0 0);
+  --komently-muted-foreground: oklch(0.556 0 0);
+  --komently-border: oklch(0.922 0 0);
+  --komently-destructive: oklch(0.58 0.22 27);
+  --komently-ring: oklch(0.537 0.251 264);
+
+  /* Radii */
+  --komently-radius: 0.625rem;
+  --komently-radius-xl: calc(var(--komently-radius) + 4px);
+  --komently-radius-2xl: calc(var(--komently-radius) + 8px);
+
+  /* Fonts */
+  --komently-font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --komently-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
-.komently-comment-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-width: 800px;
-  margin: 0 auto;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+[data-theme='dark'],
+.dark {
+  --komently-background: oklch(0.25 0 0);
+  --komently-foreground: oklch(0.918 0 0);
+  --komently-card: oklch(0.28 0 0);
+  --komently-card-foreground: oklch(0.918 0 0);
+  --komently-primary: oklch(0.62 0.23 260);
+  --komently-muted: oklch(0.22 0 0);
+  --komently-muted-foreground: oklch(0.650 0 0);
+  --komently-border: oklch(1 0 0 / 10%);
+  --komently-destructive: oklch(0.704 0.191 22.216);
+  --komently-ring: oklch(0.62 0.23 260);
 }
 
-/* Form Styles with Depth */
-.komently-form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-  background: var(--komently-card-bg);
-  border: 1px solid var(--komently-border);
-  border-radius: 12px;
-  box-shadow: 
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
-    inset 0 -1px 0 0 rgba(0, 0, 0, 0.1),
-    0 2px 4px rgba(0, 0, 0, 0.04),
-    0 1px 2px rgba(0, 0, 0, 0.02);
-}
-
-.komently-form-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.komently-avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid var(--komently-border);
-}
-
-.komently-avatar-fallback {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--komently-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--komently-text-muted);
-  border: 1px solid var(--komently-border);
-}
-
-.komently-user-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--komently-text);
-  flex: 1;
-}
-
-.komently-textarea {
-  width: 100%;
-  min-height: 80px;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid var(--komently-border);
-  background: var(--komently-input-bg);
-  resize: vertical;
-  font-family: inherit;
-  font-size: 13px;
+.komently-sdk-root {
+  font-family: var(--komently-font-sans);
+  color: var(--komently-foreground);
   line-height: 1.5;
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.04),
-    inset 0 -1px 0 0 rgba(255, 255, 255, 0.6);
-  transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
-.komently-textarea:focus {
-  outline: none;
-  border-color: var(--komently-primary);
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.06),
-    inset 0 -1px 0 0 rgba(255, 255, 255, 0.7),
-    0 0 0 3px hsla(217, 91%, 60%, 0.1),
-    0 2px 4px rgba(0, 0, 0, 0.04);
-}
-
-.komently-actions {
-  display: flex;
-  gap: 6px;
-  justify-content: flex-end;
-}
-
-.komently-button {
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--komently-border);
-  background: var(--komently-card-bg);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--komently-text);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
-    inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-    0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
-.komently-button:hover:not([disabled]) {
-  box-shadow: 
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.9),
-    inset 0 -1px 0 0 rgba(0, 0, 0, 0.15),
-    0 2px 4px rgba(0, 0, 0, 0.06);
-  transform: translateY(-1px);
+.komently-sdk-root * {
+  box-sizing: border-box;
   border-color: var(--komently-border);
 }
 
-.komently-button:active:not([disabled]) {
-  box-shadow: 
-    inset 0 1px 0 0 rgba(0, 0, 0, 0.15),
-    inset 0 -1px 0 0 rgba(255, 255, 255, 0.3),
-    0 1px 2px rgba(0, 0, 0, 0.04);
-  transform: translateY(0);
+/* ── Container ───────────────────────────────────────────────────────────── */
+.komently-container {
+  border-radius: var(--komently-radius-2xl);
+  border: 1px solid var(--komently-border);
+  background-color: var(--komently-card);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.komently-button[disabled] {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* Premium button style */
-.komently-button.komently-button-primary {
-  background: linear-gradient(135deg, var(--komently-primary) 0%, hsl(217, 91%, 55%) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  box-shadow:
-    0 2px 8px hsla(217, 91%, 60%, 0.3),
-    0 1px 4px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-}
-
-.komently-button.komently-button-primary:hover:not([disabled]) {
-  box-shadow:
-    0 4px 12px hsla(217, 91%, 60%, 0.4),
-    0 2px 6px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-}
-
-.komently-icon-btn {
+/* ── Toolbar ───────────────────────────────────────────────────────────── */
+.komently-toolbar {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--komently-text-muted);
-  border-radius: 4px;
-  transition: all 0.15s;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--komently-border);
+  background-color: color-mix(in srgb, var(--komently-muted) 30%, transparent);
 }
 
-.komently-icon-btn:hover {
-  background: var(--komently-muted);
-  color: var(--komently-text);
-}
-
-/* Comment Styles - Reddit Thread Style */
-.komently-comment {
-  position: relative;
+.komently-toolbar-title {
   display: flex;
-  gap: 12px;
-  margin-bottom: 8px;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-/* Thread line only for replies (nested comments) - positioned absolutely */
-/* Starts below the arc connector */
-.komently-comment-thread-line {
-  position: absolute;
-  left: -22px;
-  top: 20px;
-  bottom: 0;
-  width: 2px;
-  background: var(--komently-border);
+.komently-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.025em;
+}
+
+.komently-count {
+  font-family: var(--komently-font-mono);
+  font-size: 0.625rem;
+  background-color: color-mix(in srgb, var(--komently-primary) 10%, transparent);
+  color: var(--komently-primary);
+  border: 1px solid color-mix(in srgb, var(--komently-primary) 20%, transparent);
+  padding: 0.125rem 0.375rem;
+  border-radius: 9999px;
+}
+
+.komently-sorting-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background-color: var(--komently-muted);
+  padding: 0.25rem;
+  border-radius: var(--komently-radius-xl);
+}
+
+.komently-sort-tab {
+  padding: 0.375rem 1rem;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: capitalize;
+  border-radius: calc(var(--komently-radius-xl) - 4px);
+  transition: all 0.2s;
+  background: transparent;
+  border: none;
   cursor: pointer;
-  transition: background 0.15s;
-  pointer-events: auto;
+  color: var(--komently-muted-foreground);
 }
 
-.komently-comment-thread-line:hover {
-  background: hsl(214.3, 31.8%, 70%);
+.komently-sort-tab:hover {
+  color: var(--komently-foreground);
+}
+
+.komently-sort-tab-active {
+  background-color: var(--komently-card);
+  color: var(--komently-foreground);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+/* ── List ───────────────────────────────────────────────────────────── */
+.komently-list {
+  padding: 1.5rem;
+  min-height: 300px;
+  flex: 1 1 0%;
+}
+
+.komently-comments-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.komently-comment-node-wrapper {
+  padding-bottom: 1.5rem;
+}
+
+.komently-border-bottom {
+  border-bottom: 1px solid color-mix(in srgb, var(--komently-border) 40%, transparent);
+}
+
+/* ── Comment Node ────────────────────────────────────────────────────────── */
+.komently-comment-item {
+  display: flex;
+  gap: 0.625rem;
+}
+
+.komently-avatar-container {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.komently-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+  transition: opacity 0.2s ease, filter 0.2s ease;
+}
+
+.komently-avatar.size-lg {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.komently-avatar.size-md {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.komently-avatar-collapsed {
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+
+.komently-thread-line {
+  margin-top: 0.5rem;
+  width: 2px;
+  flex-grow: 1;
+  background-color: color-mix(in srgb, var(--komently-border) 40%, transparent);
+  transition: background-color 0.2s;
+}
+
+.komently-avatar-container:hover .komently-thread-line {
+  background-color: color-mix(in srgb, var(--komently-primary) 50%, transparent);
 }
 
 .komently-comment-content {
-  flex: 1;
+  flex: 1 1 0%;
   min-width: 0;
 }
 
 .komently-comment-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-}
-
-.komently-collapse-toggle {
-  width: 16px;
-  height: 16px;
-  border: none;
-  background: transparent;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
   cursor: pointer;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--komently-text-muted);
-  border-radius: 2px;
-  transition: all 0.15s;
-  flex-shrink: 0;
+  user-select: none;
+  padding: 0.125rem 0;
 }
 
-.komently-collapse-toggle:hover {
-  background: var(--komently-muted);
-  color: var(--komently-text);
+.komently-username {
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.25;
+  transition: color 0.2s;
+  color: var(--komently-foreground);
 }
 
-.komently-comment-header .komently-avatar,
-.komently-comment-header .komently-avatar-fallback {
-  width: 24px;
-  height: 24px;
-  font-size: 10px;
+.komently-comment-header:hover .komently-username {
+  color: var(--komently-primary);
 }
 
-.komently-comment-username {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--komently-text);
+.komently-username-collapsed {
+  color: color-mix(in srgb, var(--komently-muted-foreground) 60%, transparent);
+}
+
+.komently-timestamp {
+  font-family: var(--komently-font-mono);
+  font-size: 9px;
+  color: color-mix(in srgb, var(--komently-muted-foreground) 80%, transparent);
+  line-height: 1;
+}
+
+.komently-collapsed-badge {
+  font-size: 9px;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  background-color: var(--komently-muted);
+  color: var(--komently-muted-foreground);
+  font-weight: 500;
+  animation: komently-fade-in 0.2s, komently-zoom-in 0.2s;
 }
 
 .komently-comment-body {
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--komently-text);
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  margin-bottom: 8px;
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--komently-foreground) 90%, transparent);
+  line-height: 1.625;
+  margin: 0 0 0.75rem 0;
+  word-break: break-all;
 }
 
-.komently-comment-toolbar {
+.komently-comment-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 11px;
+  gap: 0.375rem;
+  margin-bottom: 0.5rem;
 }
 
-/* Vote Styles - Reddit style */
-.komently-vote {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  border: 1px solid var(--komently-border);
-  border-radius: 9999px;
-  overflow: hidden;
-  background: var(--komently-card-bg);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
-    inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-    0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
+/* ── Vote Button ─────────────────────────────────────────────────────────── */
 .komently-vote-btn {
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: transparent;
+  font-family: var(--komently-font-mono);
+  font-size: 10px;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  transition: all 0.2s;
   cursor: pointer;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--komently-text-muted);
-  transition: all 0.15s;
+  background: transparent;
+  color: var(--komently-muted-foreground);
 }
 
 .komently-vote-btn:hover {
-  background: var(--komently-muted);
-  color: var(--komently-text);
+  background-color: var(--komently-muted);
+  color: var(--komently-foreground);
 }
 
-.komently-vote-btn:first-child {
-  border-radius: 9999px 0 0 9999px;
+.komently-vote-btn-active {
+  background-color: color-mix(in srgb, var(--komently-primary) 10%, transparent);
+  border-color: color-mix(in srgb, var(--komently-primary) 30%, transparent);
+  color: var(--komently-primary);
 }
 
-.komently-vote-btn:last-child {
-  border-radius: 0 9999px 9999px 0;
+.komently-vote-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
-.komently-vote-btn.is-active:first-child {
-  color: #f59e0b;
+.komently-divider {
+  width: 1px;
+  height: 0.75rem;
+  background-color: var(--komently-border);
+  margin: 0 0.25rem;
 }
 
-.komently-vote-btn.is-active:last-child {
-  color: #3b82f6;
+.komently-reply-trigger {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  transition: all 0.2s;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: color-mix(in srgb, var(--komently-foreground) 70%, transparent);
 }
 
-.komently-score {
+.komently-reply-trigger:hover {
+  color: var(--komently-foreground);
+  background-color: var(--komently-muted);
+}
+
+.komently-reply-trigger-active {
+  color: var(--komently-primary);
+  background-color: color-mix(in srgb, var(--komently-primary) 10%, transparent);
+}
+
+/* ── Boxes/Inputs ────────────────────────────────────────────────────────── */
+.komently-reply-box-container,
+.komently-new-comment-container {
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  animation: komently-fade-in 0.2s, komently-slide-down 0.2s;
+}
+
+.komently-textarea {
+  width: 100%;
+  resize: none;
+  border-radius: var(--komently-radius-2xl);
+  border: 1px solid var(--komently-border);
+  background-color: color-mix(in srgb, var(--komently-muted) 30%, transparent);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--komently-foreground);
+  transition: all 0.2s;
+  outline: none;
+}
+
+.komently-textarea:focus {
+  border-color: color-mix(in srgb, var(--komently-primary) 40%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--komently-primary) 40%, transparent);
+}
+
+.komently-textarea::placeholder {
+  color: color-mix(in srgb, var(--komently-muted-foreground) 70%, transparent);
+}
+
+.komently-error-text {
+  font-size: 11px;
+  color: var(--komently-destructive);
+  margin: 0;
+}
+
+.komently-reply-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+.komently-button-primary {
+  padding: 0.5rem 2rem;
+  border-radius: var(--komently-radius-2xl);
+  background-color: var(--komently-primary);
+  color: var(--komently-primary-foreground);
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.komently-button-primary:hover {
+  background-color: color-mix(in srgb, var(--komently-primary) 90%, black);
+}
+
+.komently-button-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.komently-button-primary-sm {
   font-size: 11px;
   font-weight: 700;
-  color: var(--komently-text);
-  min-width: 24px;
-  text-align: center;
-  line-height: 1;
-  padding: 0 2px;
-}
-
-.komently-spacer {
-  flex: 1;
-}
-
-/* Replies - Reddit-style Thread Indentation */
-.komently-replies {
-  margin-left: 32px;
-  padding-left: 24px;
-  margin-top: 8px;
-  position: relative;
-}
-
-/* Remove duplicate vertical line completely */
-.komently-replies::before {
-  display: none !important;
-  content: none !important;
-}
-
-.komently-replies .komently-comment {
-  position: relative;
-  margin-bottom: 8px;
-}
-
-/* Curved arc connector - curves upward from bottom-left corner like Reddit */
-/* Arc extends to top to connect with parent comment's thread line */
-.komently-replies .komently-comment::before {
-  content: '';
-  position: absolute;
-  left: -22px;
-  top: 0;
-  width: 14px;
-  height: 20px;
-  background: transparent;
-  border-left: 2px solid var(--komently-border);
-  border-bottom: 2px solid var(--komently-border);
-  border-radius: 0 0 0 14px;
-  pointer-events: none;
-}
-
-/* Only show thread line for nested replies, not top-level comments */
-.komently-replies .komently-comment .komently-comment-thread-line {
-  display: block;
-}
-
-/* Hide thread lines on top-level comments (not inside .komently-replies) */
-.komently-comment-section > .komently-replies > div > .komently-comment .komently-comment-thread-line,
-.komently-comment:not(:has(.komently-replies)) .komently-comment-thread-line {
-  display: none;
-}
-
-/* Loading and Error States */
-.komently-loading {
-  padding: 16px;
-  text-align: center;
-  color: var(--komently-text-muted);
-  font-size: 13px;
-}
-
-.komently-error {
-  padding: 12px;
-  background: #fee2e2;
-  border: 1px solid #fecaca;
-  border-radius: 8px;
-  color: #991b1b;
-  font-size: 13px;
-}
-
-.komently-empty {
-  padding: 24px;
-  text-align: center;
-  color: var(--komently-text-muted);
-  font-size: 13px;
-}
-
-/* Badges */
-.komently-edited-badge {
-  font-size: 10px;
-  color: var(--komently-text-muted);
-  font-style: italic;
-  margin-left: 4px;
-}
-
-.komently-shared-badge {
-  display: inline-flex;
-  align-items: center;
-  color: var(--komently-primary);
-  margin-left: 4px;
-}
-
-.komently-deleted-badge {
-  padding: 10px;
-  background: var(--komently-muted);
-  border-radius: 6px;
-  margin-bottom: 8px;
-  border: 1px solid var(--komently-border);
-}
-
-.komently-deleted-text {
-  font-size: 11px;
-  color: var(--komently-text-muted);
-  font-style: italic;
-}
-
-/* Guest Message */
-.komently-guest-message {
-  padding: 10px;
-  background: hsl(210, 40%, 98%);
-  border: 1px solid var(--komently-border);
-  border-radius: 8px;
-  margin-bottom: 10px;
-}
-
-.komently-guest-text {
-  font-size: 12px;
-  color: var(--komently-text);
-  margin: 0;
-}
-
-.komently-guest-login-link {
-  background: none;
+  padding: 0.375rem 1rem;
+  border-radius: var(--komently-radius-2xl);
+  background-color: var(--komently-primary);
+  color: var(--komently-primary-foreground);
   border: none;
-  color: var(--komently-primary);
-  text-decoration: underline;
   cursor: pointer;
-  font-size: inherit;
-  font-family: inherit;
-  padding: 0;
-  margin: 0;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px 0 color-mix(in srgb, var(--komently-primary) 10%, transparent);
+}
+
+.komently-button-primary-sm:active {
+  transform: scale(0.95);
+}
+
+.komently-button-primary-heavy {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.5rem 1.5rem;
+  border-radius: var(--komently-radius-2xl);
+  background-color: var(--komently-primary);
+  color: var(--komently-primary-foreground);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 6px -1px color-mix(in srgb, var(--komently-primary) 10%, transparent);
+}
+
+.komently-button-primary-heavy:active {
+  transform: scale(0.95);
+}
+
+.komently-button-ghost-sm {
+  font-size: 11px;
   font-weight: 500;
+  padding: 0.375rem 1rem;
+  border-radius: var(--komently-radius-2xl);
+  background: transparent;
+  color: var(--komently-muted-foreground);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.komently-guest-login-link:hover {
-  color: hsl(217, 91%, 50%);
+.komently-button-ghost-sm:hover {
+  color: var(--komently-foreground);
+  background-color: var(--komently-muted);
 }
 
-/* Collapsed State */
-.komently-comment.collapsed .komently-comment-content {
-  opacity: 0.6;
+/* ── Auth/Login Prompts ──────────────────────────────────────────────────── */
+.komently-auth-prompt {
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 11px;
+  color: var(--komently-muted-foreground);
+  font-style: italic;
 }
 
-.komently-comment.collapsed .komently-comment-body,
-.komently-comment.collapsed .komently-comment-toolbar,
-.komently-comment.collapsed .komently-deleted-badge {
-  display: none;
-}
-
-.komently-comment.collapsed .komently-comment-header {
-  margin-bottom: 0;
-}
-
-/* Reply Form */
-.komently-reply-form {
-  margin-top: 8px;
-  padding-top: 8px;
+.komently-login-prompt {
+  padding: 1.5rem;
   border-top: 1px solid var(--komently-border);
+  background-color: color-mix(in srgb, var(--komently-muted) 10%, transparent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
 }
 
-/* Load More Button */
-.komently-load-more {
-  margin-top: 12px;
-  padding: 8px 16px;
+.komently-login-text {
+  font-size: 0.875rem;
+  color: var(--komently-muted-foreground);
+  font-style: italic;
+}
+
+.komently-new-comment-container {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--komently-border);
+  background-color: color-mix(in srgb, var(--komently-muted) 10%, transparent);
+  gap: 0.5rem;
+}
+
+/* ── Pagination ──────────────────────────────────────────────────────────── */
+.komently-pagination {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--komently-border);
+  background-color: color-mix(in srgb, var(--komently-muted) 20%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.komently-pagination-btn {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--komently-muted-foreground);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.komently-pagination-btn:hover:not(:disabled) {
+  color: var(--komently-foreground);
+}
+
+.komently-pagination-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.komently-pagination-info {
+  font-family: var(--komently-font-mono);
+  font-size: 10px;
+  color: color-mix(in srgb, var(--komently-muted-foreground) 80%, transparent);
+}
+
+/* ── Profile ───────────────────────────────────────────────────────────── */
+.komently-profile-bar {
+  padding: 0.75rem 1.5rem;
+  border-top: 1px solid var(--komently-border);
+  background-color: color-mix(in srgb, var(--komently-muted) 10%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.komently-profile-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.komently-profile-avatar {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: white;
+  text-transform: uppercase;
+}
+
+.komently-profile-text {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--komently-foreground) 80%, transparent);
+}
+
+.komently-edit-profile-btn {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: color-mix(in srgb, var(--komently-foreground) 80%, transparent);
+  transition: color 0.2s;
+}
+
+.komently-edit-profile-btn:hover {
+  color: var(--komently-foreground);
+}
+
+/* ── Profile Editor ───────────────────────────────────────────────────────── */
+.komently-profile-editor {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--komently-border);
+  background-color: color-mix(in srgb, var(--komently-muted) 10%, transparent);
+}
+
+.komently-profile-editor-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 24rem;
+}
+
+.komently-profile-editor-title {
+  font-family: var(--komently-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--komently-muted-foreground);
+  margin: 0;
+}
+
+.komently-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.komently-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--komently-muted-foreground);
+  letter-spacing: 0.05em;
+}
+
+.komently-input {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--komently-border);
+  background-color: color-mix(in srgb, var(--komently-muted) 30%, transparent);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: var(--komently-foreground);
+  outline: none;
+  transition: all 0.2s;
+}
+
+.komently-input:focus {
+  border-color: color-mix(in srgb, var(--komently-primary) 20%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--komently-primary) 20%, transparent);
+}
+
+.komently-profile-editor-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* ── Animations ──────────────────────────────────────────────────────────── */
+@keyframes komently-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes komently-slide-down {
+  from {
+    transform: translateY(-0.25rem);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes komently-zoom-in {
+  from {
+    transform: scale(0.95);
+  }
+
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes komently-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.komently-spinner {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid color-mix(in srgb, var(--komently-primary) 30%, transparent);
+  border-top-color: var(--komently-primary);
+  border-radius: 9999px;
+  animation: komently-spin 1s linear infinite;
+}
+
+.komently-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5rem 0;
+  gap: 0.75rem;
+}
+
+.komently-loading-text {
+  font-size: 0.75rem;
+  font-family: var(--komently-font-mono);
+  color: color-mix(in srgb, var(--komently-muted-foreground) 80%, transparent);
+  animation: komently-pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes komently-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.komently-empty-state {
   text-align: center;
+  padding: 5rem 0;
+  font-size: 0.875rem;
+  color: var(--komently-muted-foreground);
 }

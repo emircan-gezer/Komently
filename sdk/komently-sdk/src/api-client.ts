@@ -52,10 +52,11 @@ export class KomentlyClient {
   /**
    * Fetch top-level comments for a section by publicId
    */
-  async getComments(params: { publicId: string; limit?: number; cursor?: string; replyDepth?: number }): Promise<{ comments: Comment[]; nextCursor: string | null; hasMore: boolean; viewerId: string | null; settings?: any }> {
+  async getComments(params: { publicId: string; pageSize?: number; page?: number; sorting?: string; replyDepth?: number }): Promise<{ comments: Comment[]; totalPages: number; totalCount: number; page: number }> {
     const search = new URLSearchParams();
-    if (params.limit) search.set('limit', String(params.limit));
-    if (params.cursor) search.set('cursor', params.cursor);
+    if (params.pageSize) search.set('pageSize', String(params.pageSize));
+    if (params.page) search.set('page', String(params.page));
+    if (params.sorting) search.set('sorting', params.sorting);
     if (params.replyDepth) search.set('replyDepth', String(params.replyDepth));
 
     const url = `${this.baseUrl}/api/comments/${encodeURIComponent(params.publicId)}?${search.toString()}`;
@@ -70,25 +71,23 @@ export class KomentlyClient {
 
     const promise = (async () => {
       const response = await fetch(url, {
-      method: 'GET',
-      headers: await this.getHeaders(true),
-      // Optional cookie support when server is configured for credentials
-      credentials: (this as any).includeCredentials ? 'include' : 'omit',
+        method: 'GET',
+        headers: await this.getHeaders(true),
+        credentials: (this as any).includeCredentials ? 'include' : 'omit',
       });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to fetch comments');
-    }
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch comments');
+      }
 
       const data = await response.json();
       const normalized = {
-      comments: data.comments || [],
-        nextCursor: data.nextCursor ?? null,
-        hasMore: Boolean(data.hasMore),
-        viewerId: data.viewerId ?? null,
-        settings: data.settings || {},
-    };
+        comments: data.comments || [],
+        totalPages: data.totalPages || 0,
+        totalCount: data.totalCount || 0,
+        page: data.page || 1,
+      };
       this.cache.set(key, { t: Date.now(), data: normalized });
       this.inflight.delete(key);
       return normalized;
@@ -99,23 +98,22 @@ export class KomentlyClient {
   }
 
   /**
-   * Create a new comment (or reply when replyTo provided)
+   * Create a new comment (or reply when parentId provided)
    */
   async createComment(
     publicId: string,
-    comment: string,
-    options?: { username?: string; replyTo?: string }
+    body: string,
+    options?: { parentId?: string }
   ): Promise<Comment> {
-    const headers = await this.getHeaders(true); // Include guest token if not authenticated
+    const headers = await this.getHeaders(true);
 
-    const response = await fetch(`${this.baseUrl}/api/comments/${encodeURIComponent(publicId)}` , {
+    const response = await fetch(`${this.baseUrl}/api/comments/${encodeURIComponent(publicId)}/post`, {
       method: 'POST',
       headers,
       credentials: (this as any).includeCredentials ? 'include' : 'omit',
       body: JSON.stringify({
-        comment: comment.trim(),
-        username: options?.username,
-        reply_to: options?.replyTo,
+        body: body.trim(),
+        parentId: options?.parentId,
       }),
     });
 
@@ -124,8 +122,7 @@ export class KomentlyClient {
       throw new Error(error.error || 'Failed to create comment');
     }
 
-    const data = await response.json();
-    return data.comment;
+    return await response.json();
   }
 
   /**
@@ -149,22 +146,22 @@ export class KomentlyClient {
 
     const promise = (async () => {
       const response = await fetch(url, {
-      method: 'GET',
-      headers: await this.getHeaders(),
-      credentials: (this as any).includeCredentials ? 'include' : 'omit',
+        method: 'GET',
+        headers: await this.getHeaders(),
+        credentials: (this as any).includeCredentials ? 'include' : 'omit',
       });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to fetch replies');
-    }
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch replies');
+      }
 
       const data = await response.json();
       const normalized = {
-      comments: data.comments || [],
+        comments: data.comments || [],
         nextCursor: data.nextCursor ?? null,
         hasMore: Boolean(data.hasMore),
-    };
+      };
       this.cache.set(key, { t: Date.now(), data: normalized });
       this.inflight.delete(key);
       return normalized;
@@ -197,25 +194,36 @@ export class KomentlyClient {
   /**
    * Add or update a reaction (like/dislike)
    */
-  async setReaction(commentId: string, state: -1 | 0 | 1): Promise<void> {
-    const token = await this.tokenManager.getToken();
-    if (!token) {
-      throw new Error('Authentication required. Please log in to react to comments.');
-    }
-
-    const headers = await this.getHeaders(true); // Include guest token if not authenticated
-
-    const response = await fetch(`${this.baseUrl}/api/comment/${encodeURIComponent(commentId)}/vote`, {
+  async setReaction(commentId: string, value: 1 | -1 | 0): Promise<any> {
+    const response = await fetch(`${this.baseUrl}/api/comments/vote`, {
       method: 'POST',
-      headers,
+      headers: await this.getHeaders(true),
       credentials: (this as any).includeCredentials ? 'include' : 'omit',
-      body: JSON.stringify({ state }),
+      body: JSON.stringify({ commentId, value }),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Failed to set reaction');
+      throw new Error(error.error || `Failed to set reaction: ${response.statusText}`);
     }
+
+    return response.json();
+  }
+
+  async updateProfile(data: { username: string }): Promise<any> {
+    const response = await fetch(`${this.baseUrl}/api/commenters/me/update`, {
+      method: 'POST',
+      headers: await this.getHeaders(),
+      credentials: (this as any).includeCredentials ? 'include' : 'omit',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error ?? `Failed to update profile: ${response.statusText}`);
+    }
+
+    return response.json();
   }
 
   /**
@@ -249,29 +257,14 @@ export class KomentlyClient {
   /**
    * Get current user info using commenter JWT token
    */
-  async getCurrentUser(): Promise<{
-    id: string | null;
-    email: string | null;
-    username: string | null;
-    firstName: string | null;
-    lastName: string | null;
-    avatarUrl: string | null;
-  } | null> {
-    const token = await this.tokenManager.getToken();
-    if (!token) return null;
-
-    const response = await fetch(`${this.baseUrl}/api/user`, {
+  async getCurrentUser(): Promise<any | null> {
+    const response = await fetch(`${this.baseUrl}/api/commenters/me`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        'X-Commenter-Token': token,
-      },
+      headers: await this.getHeaders(),
     });
 
     if (!response.ok) return null;
-    const data: UserResponse = await response.json();
-    return data?.user ?? null;
+    return await response.json();
   }
 
   /**

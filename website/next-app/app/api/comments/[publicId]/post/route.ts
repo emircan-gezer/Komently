@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
 import { verifyCommenterToken } from "@/lib/commenter-auth";
+import { cookies } from "next/headers";
 
 export async function POST(
     request: NextRequest,
@@ -43,8 +44,11 @@ export async function POST(
         );
     }
 
+    const cookieStore = await cookies();
+    const adminClient = await supabase(cookieStore);
+
     // 3 — resolve section
-    const { data: section, error: sErr } = await supabase
+    const { data: section, error: sErr } = await adminClient
         .from("comment_sections")
         .select("id")
         .eq("public_id", publicId)
@@ -56,7 +60,7 @@ export async function POST(
 
     // 4 — validate parent comment exists in same section (if replying)
     if (parentId) {
-        const { data: parent, error: pErr } = await supabase
+        const { data: parent, error: pErr } = await adminClient
             .from("comments")
             .select("id, section_id")
             .eq("id", parentId)
@@ -71,7 +75,7 @@ export async function POST(
     }
 
     // 5 — insert comment
-    const { data: inserted, error: iErr } = await supabase
+    const { data: inserted, error: iErr } = await adminClient
         .from("comments")
         .insert({
             section_id: section.id,
@@ -81,7 +85,7 @@ export async function POST(
         })
         .select(`
             id, parent_id, body, created_at,
-            commenters ( username, avatar_initial, color )
+            commenters!comments_commenter_id_fkey ( username, avatar_initial, color )
         `)
         .single();
 

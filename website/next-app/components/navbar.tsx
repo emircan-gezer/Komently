@@ -1,21 +1,52 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 
 const navLinks = [
     { href: "/", label: "Home" },
     { href: "/dashboard", label: "Dashboard" },
-    { href: "/docs", label: "Docs" },
+    { href: "/docs", label: "Documentation" },
 ];
 
 export function Navbar() {
     const pathname = usePathname();
+    const router = useRouter();
     const [open, setOpen] = useState(false);
+    const [user, setUser] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const supabase = createClient();
+
+        // Initial state
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setUser(session?.user ?? null);
+            setLoading(false);
+        });
+
+        // Listen for changes (login, logout, etc)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (event, session) => {
+                setUser(session?.user ?? null);
+            }
+        );
+
+        return () => subscription.unsubscribe();
+    }, []);
+
+    const handleLogout = async () => {
+        const supabase = createClient();
+        await supabase.auth.signOut();
+        router.push('/');
+        router.refresh();
+        setOpen(false);
+    };
 
     return (
         <nav className="fixed inset-x-0 top-0 z-50 h-16 border-b border-border bg-background">
@@ -38,13 +69,17 @@ export function Navbar() {
                 {/* Desktop links */}
                 <div className="hidden items-center gap-0.5 md:flex">
                     {navLinks.map((link) => {
+                        // Don't show Dashboard link in the main nav if logged out (handled by button later)
+                        if (link.href === '/dashboard' && !user && !loading) return null;
+                        if (link.href === '/dashboard' && loading) return <div key="skeleton" className="w-20 h-8 rounded-md bg-muted/20 animate-pulse" />;
+
                         const active = pathname === link.href;
                         return (
                             <Link
                                 key={link.href}
                                 href={link.href}
                                 className={cn(
-                                    "rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors",
+                                    "rounded-xl px-3.5 py-1.5 text-sm font-medium transition-colors",
                                     active
                                         ? "bg-muted text-foreground"
                                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -58,12 +93,33 @@ export function Navbar() {
 
                 {/* CTA + mobile toggle */}
                 <div className="flex items-center gap-2">
-                    <Button asChild size="sm" className="hidden md:inline-flex">
-                        <Link href="/dashboard">Get Started</Link>
-                    </Button>
+                    {loading ? (
+                        <div className="hidden md:flex gap-2">
+                            <div className="w-14 h-8 rounded-full bg-muted/20 animate-pulse" />
+                            <div className="w-20 h-8 rounded-full bg-muted/20 animate-pulse" />
+                        </div>
+                    ) : user ? (
+                        <div className="hidden md:flex items-center gap-2">
+                            <Button asChild size="sm" variant="ghost" className="rounded-full text-muted-foreground hover:text-foreground">
+                                <Link href="/dashboard">Dashboard</Link>
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={handleLogout} className="rounded-full transition-all">
+                                Logout
+                            </Button>
+                        </div>
+                    ) : (
+                        <>
+                            <Button asChild size="sm" variant="ghost" className="hidden md:inline-flex rounded-full text-muted-foreground hover:text-foreground">
+                                <Link href="/login">Login</Link>
+                            </Button>
+                            <Button asChild size="sm" className="hidden md:inline-flex rounded-full transition-all">
+                                <Link href="/register">Register</Link>
+                            </Button>
+                        </>
+                    )}
                     <button
                         onClick={() => setOpen((v) => !v)}
-                        className="flex size-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
+                        className="flex size-9 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
                         aria-label="Toggle menu"
                     >
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -91,7 +147,7 @@ export function Navbar() {
                                 href={link.href}
                                 onClick={() => setOpen(false)}
                                 className={cn(
-                                    "rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+                                    "rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                                     pathname === link.href
                                         ? "bg-muted text-foreground"
                                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -100,9 +156,27 @@ export function Navbar() {
                                 {link.label}
                             </Link>
                         ))}
-                        <Button asChild size="sm" className="mt-2">
-                            <Link href="/dashboard" onClick={() => setOpen(false)}>Get Started</Link>
-                        </Button>
+                        <div className="mt-2 flex flex-col gap-2">
+                            {user ? (
+                                <>
+                                    <Button asChild size="sm" variant="ghost" className="w-full rounded-full justify-start px-3 text-muted-foreground hover:text-foreground">
+                                        <Link href="/dashboard" onClick={() => setOpen(false)}>Dashboard</Link>
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={handleLogout} className="w-full rounded-full justify-start px-3">
+                                        Logout
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    <Button asChild size="sm" variant="ghost" className="w-full rounded-full text-muted-foreground justify-start px-3">
+                                        <Link href="/login" onClick={() => setOpen(false)}>Login</Link>
+                                    </Button>
+                                    <Button asChild size="sm" className="w-full rounded-full justify-start px-3">
+                                        <Link href="/register" onClick={() => setOpen(false)}>Register</Link>
+                                    </Button>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

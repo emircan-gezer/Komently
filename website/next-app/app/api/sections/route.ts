@@ -7,18 +7,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { supabase as adminClient } from "@/lib/supabase/server";
+import { supabase } from "@/lib/supabase/server";
 
 // ── Auth helper: resolve the calling site owner ───────────────────────────────
 
 async function getOwner(request: NextRequest) {
-    const cookieStore = await cookies();
     const client = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
             cookies: {
-                getAll: () => cookieStore.getAll(),
+                getAll: async () => {
+                    const cookieStore = await cookies();
+                    return cookieStore.getAll();
+                },
                 setAll: () => { }, // read-only in route handlers
             },
         }
@@ -34,6 +36,8 @@ export async function GET(request: NextRequest) {
     if (!owner) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const cookieStore = await cookies();
+    const adminClient = await supabase(cookieStore);
 
     // Fetch sections owned by this user
     const { data: rawSections, error: sErr } = await adminClient
@@ -152,6 +156,9 @@ export async function POST(request: NextRequest) {
             { status: 422 }
         );
     }
+
+    const cookieStore = await cookies();
+    const adminClient = await supabase(cookieStore);
 
     // Check uniqueness
     const { data: existing } = await adminClient

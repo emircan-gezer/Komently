@@ -9,7 +9,7 @@ import { createClient } from "@supabase/supabase-js";
 // ── Supabase browser client (anon key — only reads authed owner's data) ───────
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 );
 
 // ── Types ─────────────────────────────────────────────────────────────────────
