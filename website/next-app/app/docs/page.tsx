@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CommentSection } from "komently-sdk";
-import "komently-sdk/dist/style.css";
 
 export default function DocsPage() {
     return (
