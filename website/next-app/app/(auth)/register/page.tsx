@@ -27,7 +27,7 @@ function RegisterForm() {
             email,
             password,
             options: {
-                emailRedirectTo: `${window.location.origin}/auth/callback`,
+                emailRedirectTo: `${process.env.NEXT_PUBLIC_KOMENTLY_BASE_URL}/auth/callback`,
             },
         });
 
