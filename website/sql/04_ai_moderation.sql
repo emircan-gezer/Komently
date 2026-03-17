@@ -10,7 +10,7 @@
 -- 2. Add columns to comments table
 ALTER TABLE comments 
 ADD COLUMN IF NOT EXISTS moderation_status TEXT NOT NULL DEFAULT 'pending' 
-CHECK (moderation_status IN ('pending', 'approved', 'flagged')),
+CHECK (moderation_status IN ('pending', 'approved', 'flagged', 'rejected', 'shadow_hidden')),
 ADD COLUMN IF NOT EXISTS toxicity_score FLOAT,
 ADD COLUMN IF NOT EXISTS is_spam BOOLEAN DEFAULT FALSE,
 ADD COLUMN IF NOT EXISTS ai_metadata JSONB DEFAULT '{}';

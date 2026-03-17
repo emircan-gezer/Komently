@@ -22,7 +22,11 @@ import {
     CheckCircle2,
     XCircle,
     Info,
-    LayoutDashboard
+    LayoutDashboard,
+    Sparkles,
+    Send,
+    Bot,
+    User,
 } from "lucide-react";
 
 const supabase = createClient(
@@ -52,7 +56,12 @@ export default function SectionDashboardPage({ params }: { params: Promise<{ pub
     const [section, setSection] = useState<Section | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState<"general" | "rules" | "ai" | "analytics">("general");
+    const [activeTab, setActiveTab] = useState<"general" | "rules" | "ai" | "analytics" | "assistant">("general");
+
+    // AI chat state
+    const [chatMessages, setChatMessages] = useState<{ role: string; content: string }[]>([]);
+    const [chatInput, setChatInput] = useState("");
+    const [chatLoading, setChatLoading] = useState(false);
 
     // Editable state
     const [editName, setEditName] = useState("");
@@ -87,6 +96,39 @@ export default function SectionDashboardPage({ params }: { params: Promise<{ pub
     }, [publicId, router]);
 
     useEffect(() => { loadSection(); }, [loadSection]);
+
+    const sendChatMessage = useCallback(async () => {
+        if (!chatInput.trim() || chatLoading) return;
+        const userMsg = chatInput.trim();
+        setChatInput("");
+        setChatMessages(prev => [...prev, { role: "user", content: userMsg }]);
+        setChatLoading(true);
+        try {
+            const res = await fetch("/api/ai-chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    sectionPublicId: publicId,
+                    message: userMsg,
+                    history: chatMessages.slice(-10),
+                }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                let reply = data.reply || "No response from agent.";
+                if (data.actions_taken?.length > 0) {
+                    reply += "\n\n✅ Actions: " + data.actions_taken.join(", ");
+                }
+                setChatMessages(prev => [...prev, { role: "assistant", content: reply }]);
+            } else {
+                setChatMessages(prev => [...prev, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);
+            }
+        } catch {
+            setChatMessages(prev => [...prev, { role: "assistant", content: "Could not reach the AI service. Is it running?" }]);
+        } finally {
+            setChatLoading(false);
+        }
+    }, [chatInput, chatLoading, chatMessages, publicId]);
 
     const handleSave = async () => {
         setSaving(true);
@@ -190,13 +232,20 @@ export default function SectionDashboardPage({ params }: { params: Promise<{ pub
                     >
                         <BarChart3 className="h-4 w-4" /> Analytics
                     </button>
+                    <div className="my-2 border-t border-border/30" />
+                    <button
+                        onClick={() => setActiveTab("assistant")}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === "assistant" ? "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 text-violet-500 shadow-sm border border-violet-500/20" : "text-muted-foreground hover:bg-muted/50"}`}
+                    >
+                        <Sparkles className="h-4 w-4" /> AI Assistant
+                    </button>
                 </aside>
 
                 {/* Main Content Area */}
                 <main className="space-y-6">
                     {/* General Settings */}
                     {activeTab === "general" && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="space-y-6">
                             <Card className="rounded-[2rem] border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden border">
                                 <CardHeader className="p-8">
                                     <CardTitle>Basic Configuration</CardTitle>
@@ -245,7 +294,7 @@ export default function SectionDashboardPage({ params }: { params: Promise<{ pub
 
                     {/* Rules & Logic */}
                     {activeTab === "rules" && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="space-y-6">
                             <Card className="rounded-[2rem] border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden border">
                                 <CardHeader className="p-8">
                                     <CardTitle>Content Restrictions</CardTitle>
@@ -287,7 +336,7 @@ export default function SectionDashboardPage({ params }: { params: Promise<{ pub
 
                     {/* AI Moderation */}
                     {activeTab === "ai" && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="space-y-6">
                             <Card className="rounded-[2rem] border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden border">
                                 <CardHeader className="p-8">
                                     <div className="flex items-center justify-between">
@@ -360,7 +409,7 @@ export default function SectionDashboardPage({ params }: { params: Promise<{ pub
 
                     {/* Analytics Placeholder */}
                     {activeTab === "analytics" && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="space-y-6">
                             <Card className="rounded-[2rem] border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden border min-h-[400px] flex items-center justify-center">
                                 <div className="text-center p-8">
                                     <div className="mx-auto size-16 rounded-[1.5rem] bg-muted/50 flex items-center justify-center mb-6">
@@ -370,6 +419,120 @@ export default function SectionDashboardPage({ params }: { params: Promise<{ pub
                                     <p className="text-sm text-muted-foreground max-w-xs mx-auto">
                                         Visual analytics for engagement and moderation trends for this specific section are under construction.
                                     </p>
+                                </div>
+                            </Card>
+                        </div>
+                    )}
+
+                    {/* AI Assistant Chat */}
+                    {activeTab === "assistant" && (
+                        <div className="">
+                            <Card className="rounded-[2rem] border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden border flex flex-col" style={{ height: "calc(100vh - 280px)", minHeight: "500px" }}>
+                                {/* Chat Header */}
+                                <div className="px-8 py-5 border-b border-border/40 bg-background/50">
+                                    <div className="flex items-center gap-3">
+                                        <div className="size-10 rounded-xl bg-primary flex items-center justify-center">
+                                            <Bot className="h-5 w-5 text-primary-foreground" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-bold">AI Assistant</h3>
+                                            <p className="text-[11px] text-muted-foreground">Manage your comment section with natural language</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Chat Messages */}
+                                <div className="flex-1 overflow-y-auto px-8 py-6 space-y-4">
+                                    {chatMessages.length === 0 && (
+                                        <div className="flex flex-col items-center justify-center h-full text-center gap-4">
+                                            <div className="size-16 rounded-[1.5rem] bg-muted flex items-center justify-center">
+                                                <Sparkles className="h-8 w-8 text-muted-foreground" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-bold mb-1">Start a conversation</h4>
+                                                <p className="text-xs text-muted-foreground max-w-sm">
+                                                    Ask me to manage comments, change settings, or analyze your section. Try:
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 justify-center max-w-md">
+                                                {[
+                                                    "What are my current settings?",
+                                                    "Flag all comments with links",
+                                                    "Set toxicity threshold to 0.5",
+                                                    "Show me recent flagged comments",
+                                                ].map((suggestion) => (
+                                                    <button
+                                                        key={suggestion}
+                                                        onClick={() => {
+                                                            setChatInput(suggestion);
+                                                        }}
+                                                        className="text-[11px] px-3 py-1.5 rounded-full border border-border bg-background text-foreground hover:bg-muted transition-colors"
+                                                    >
+                                                        {suggestion}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {chatMessages.map((msg, i) => (
+                                        <div key={i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                                            {msg.role === "assistant" && (
+                                                <div className="size-7 rounded-lg bg-primary flex items-center justify-center shrink-0 mt-0.5">
+                                                    <Bot className="h-3.5 w-3.5 text-primary-foreground" />
+                                                </div>
+                                            )}
+                                            <div
+                                                className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                                                    msg.role === "user"
+                                                        ? "bg-primary text-primary-foreground rounded-br-md"
+                                                        : "bg-muted/50 border border-border/50 rounded-bl-md"
+                                                }`}
+                                            >
+                                                {msg.content}
+                                            </div>
+                                            {msg.role === "user" && (
+                                                <div className="size-7 rounded-lg bg-foreground/10 flex items-center justify-center shrink-0 mt-0.5">
+                                                    <User className="h-3.5 w-3.5 text-foreground/60" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    {chatLoading && (
+                                        <div className="flex gap-3">
+                                            <div className="size-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
+                                                <Bot className="h-3.5 w-3.5 text-primary-foreground" />
+                                            </div>
+                                            <div className="bg-muted/50 border border-border/50 rounded-2xl rounded-bl-md px-4 py-3">
+                                                <div className="flex gap-1">
+                                                    <span className="size-2 rounded-full bg-foreground/40 animate-bounce" style={{ animationDelay: "0ms" }} />
+                                                    <span className="size-2 rounded-full bg-foreground/40 animate-bounce" style={{ animationDelay: "150ms" }} />
+                                                    <span className="size-2 rounded-full bg-foreground/40 animate-bounce" style={{ animationDelay: "300ms" }} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Chat Input */}
+                                <div className="px-6 py-4 border-t border-border/40 bg-background/50">
+                                    <div className="flex gap-3">
+                                        <input
+                                            value={chatInput}
+                                            onChange={(e) => setChatInput(e.target.value)}
+                                            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } }}
+                                            placeholder="Ask your AI assistant..."
+                                            className="flex-1 rounded-xl border border-border bg-background px-4 py-3 text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-violet-500/40"
+                                        />
+                                        <Button
+                                            onClick={sendChatMessage}
+                                            disabled={chatLoading || !chatInput.trim()}
+                                            className="rounded-xl px-4 bg-primary text-primary-foreground"
+                                        >
+                                            <Send className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 </div>
                             </Card>
                         </div>

@@ -1,3 +1,547 @@
+// src/config.ts
+var defaultBaseUrl = "http://localhost:3000";
+var defaultApiKey = "";
+function configure(config) {
+  defaultBaseUrl = config.baseUrl.replace(/\/$/, "");
+  if (config.apiKey) {
+    defaultApiKey = config.apiKey;
+  }
+}
+function getBaseUrl() {
+  return defaultBaseUrl;
+}
+function getApiKey() {
+  return defaultApiKey;
+}
+
+// src/token-manager.ts
+var TOKEN_COOKIE_NAME = "komently_session";
+var TokenManager = class {
+  constructor(baseUrl) {
+    this.baseUrl = baseUrl || getBaseUrl();
+  }
+  /**
+   * Get stored commenter token from cookie only
+   */
+  getStoredToken() {
+    if (typeof window === "undefined") return null;
+    const cookies = document.cookie.split(";");
+    for (let cookie of cookies) {
+      const [name, value] = cookie.trim().split("=");
+      if (name === TOKEN_COOKIE_NAME && value) {
+        return decodeURIComponent(value);
+      }
+    }
+    return null;
+  }
+  /**
+   * Store commenter token in cookie only
+   */
+  storeToken(token) {
+    if (typeof window === "undefined") return;
+    const expires = /* @__PURE__ */ new Date();
+    expires.setTime(expires.getTime() + 24 * 60 * 60 * 1e3);
+    const isSecure = window.location.protocol === "https:";
+    const encodedToken = encodeURIComponent(token);
+    document.cookie = `${TOKEN_COOKIE_NAME}=${encodedToken}; expires=${expires.toUTCString()}; path=/; SameSite=Lax${isSecure ? "; Secure" : ""}`;
+  }
+  /**
+   * Clear stored token (cookie only)
+   */
+  clearToken() {
+    if (typeof window === "undefined") return;
+    document.cookie = `${TOKEN_COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax`;
+  }
+  /**
+   * Fetch a new commenter token from the server
+   * This requires the user to be authenticated via Clerk on the Komently domain
+   */
+  async fetchToken() {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/auth/token`, {
+        method: "GET",
+        credentials: "include",
+        // Include cookies for Clerk session
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+      if (!response.ok) {
+        return null;
+      }
+      const data = await response.json();
+      if (data.token) {
+        this.storeToken(data.token);
+        return data.token;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching commenter token:", error);
+      return null;
+    }
+  }
+  /**
+   * Get or fetch token, fetching if not available or expired
+   */
+  async getToken(forceRefresh = false) {
+    if (!forceRefresh) {
+      const stored = this.getStoredToken();
+      if (stored) return stored;
+    }
+    return await this.fetchToken();
+  }
+  /**
+   * Open login popup and wait for authentication
+   */
+  openLoginPopup(redirectUrl) {
+    return new Promise((resolve) => {
+      const width = 500;
+      const height = 600;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
+      const origin = redirectUrl ? new URL(redirectUrl).origin : window.location.origin;
+      const popupUrl = `${this.baseUrl}/sign-in?redirect_url=${encodeURIComponent(`${this.baseUrl}/komently/oauth?origin=${encodeURIComponent(origin)}`)}`;
+      const popup = window.open(
+        popupUrl,
+        "komently-auth",
+        `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
+      );
+      if (!popup) {
+        console.error("Failed to open popup. Please allow popups for this site.");
+        resolve(null);
+        return;
+      }
+      const timeoutTimer = setTimeout(() => {
+        clearInterval(pollTimer);
+        popup.close();
+        resolve(null);
+      }, 5 * 60 * 1e3);
+      const pollTimer = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(pollTimer);
+          clearTimeout(timeoutTimer);
+          window.removeEventListener("message", messageHandler);
+          const token = this.getStoredToken();
+          resolve(token);
+        }
+      }, 500);
+      const messageHandler = (event) => {
+        if (event.origin !== this.baseUrl) return;
+        if (event.data.type === "komently-auth-success") {
+          window.removeEventListener("message", messageHandler);
+          clearInterval(pollTimer);
+          clearTimeout(timeoutTimer);
+          const token = event.data.token;
+          if (token) {
+            this.storeToken(token);
+            popup.close();
+            resolve(token);
+          } else {
+            popup.close();
+            resolve(null);
+          }
+        } else if (event.data.type === "komently-auth-error") {
+          window.removeEventListener("message", messageHandler);
+          clearInterval(pollTimer);
+          clearTimeout(timeoutTimer);
+          console.error("Authentication error:", event.data.error);
+          popup.close();
+          resolve(null);
+        }
+      };
+      window.addEventListener("message", messageHandler);
+    });
+  }
+};
+
+// src/guest-manager.ts
+var GUEST_TOKEN_COOKIE_NAME = "komently_guest_token";
+var GuestManager = class {
+  constructor(baseUrl) {
+    this.baseUrl = baseUrl || getBaseUrl();
+  }
+  /**
+   * Get stored guest token from cookie
+   */
+  getStoredGuestToken() {
+    if (typeof window === "undefined") return null;
+    const cookies = document.cookie.split(";");
+    for (let cookie of cookies) {
+      const [name, value] = cookie.trim().split("=");
+      if (name === GUEST_TOKEN_COOKIE_NAME && value) {
+        return decodeURIComponent(value);
+      }
+    }
+    return null;
+  }
+  /**
+   * Store guest token in cookie
+   */
+  storeGuestToken(token) {
+    if (typeof window === "undefined") return;
+    const expires = /* @__PURE__ */ new Date();
+    expires.setTime(expires.getTime() + 365 * 24 * 60 * 60 * 1e3);
+    const isSecure = window.location.protocol === "https:";
+    const encodedToken = encodeURIComponent(token);
+    document.cookie = `${GUEST_TOKEN_COOKIE_NAME}=${encodedToken}; expires=${expires.toUTCString()}; path=/; SameSite=Lax${isSecure ? "; Secure" : ""}`;
+  }
+  /**
+   * Get or fetch guest token
+   */
+  async getGuestToken() {
+    const stored = this.getStoredGuestToken();
+    if (stored) return stored;
+    try {
+      const response = await fetch(`${this.baseUrl}/api/guest/token`, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+      if (!response.ok) return null;
+      const data = await response.json();
+      if (data.guestToken) {
+        this.storeGuestToken(data.guestToken);
+        return data.guestToken;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching guest token:", error);
+      return null;
+    }
+  }
+  /**
+   * Clear guest token
+   */
+  clearGuestToken() {
+    if (typeof window === "undefined") return;
+    document.cookie = `${GUEST_TOKEN_COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax`;
+  }
+};
+
+// src/api-client.ts
+var KomentlyClient = class {
+  constructor(config) {
+    this.cache = /* @__PURE__ */ new Map();
+    this.inflight = /* @__PURE__ */ new Map();
+    this.baseUrl = config?.baseUrl?.replace(/\/$/, "") || getBaseUrl();
+    this.apiKey = config?.apiKey || getApiKey();
+    this.tokenManager = new TokenManager(this.baseUrl);
+    this.guestManager = new GuestManager(this.baseUrl);
+  }
+  /**
+   * Get authentication headers including API key, optional commenter token, and guest token
+   */
+  async getHeaders(includeGuestToken = false) {
+    const headers = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${this.apiKey}`,
+      "X-API-Key": this.apiKey
+    };
+    const token = await this.tokenManager.getToken();
+    if (token) {
+      headers["X-Commenter-Token"] = token;
+    }
+    if (includeGuestToken && !token) {
+      const guestToken = await this.guestManager.getGuestToken();
+      if (guestToken) {
+        headers["X-Guest-Token"] = guestToken;
+      }
+    }
+    return headers;
+  }
+  /**
+   * Fetch top-level comments for a section by publicId
+   */
+  async getComments(params) {
+    const search = new URLSearchParams();
+    if (params.pageSize) search.set("pageSize", String(params.pageSize));
+    if (params.page) search.set("page", String(params.page));
+    if (params.sorting) search.set("sorting", params.sorting);
+    if (params.replyDepth) search.set("replyDepth", String(params.replyDepth));
+    const url = `${this.baseUrl}/api/comments/${encodeURIComponent(params.publicId)}?${search.toString()}`;
+    const key = `comments:${url}`;
+    const now = Date.now();
+    const cached = this.cache.get(key);
+    if (cached && now - cached.t < 1e4) {
+      return cached.data;
+    }
+    const inflight = this.inflight.get(key);
+    if (inflight) return inflight;
+    const promise = (async () => {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: await this.getHeaders(true),
+        credentials: this.includeCredentials ? "include" : "omit"
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to fetch comments");
+      }
+      const data = await response.json();
+      const normalized = {
+        comments: data.comments || [],
+        totalPages: data.totalPages || 0,
+        totalCount: data.totalCount || 0,
+        page: data.page || 1
+      };
+      this.cache.set(key, { t: Date.now(), data: normalized });
+      this.inflight.delete(key);
+      return normalized;
+    })();
+    this.inflight.set(key, promise);
+    return promise;
+  }
+  /**
+   * Create a new comment (or reply when parentId provided)
+   */
+  async createComment(publicId, body, options) {
+    const headers = await this.getHeaders(true);
+    const response = await fetch(`${this.baseUrl}/api/comments/${encodeURIComponent(publicId)}/post`, {
+      method: "POST",
+      headers,
+      credentials: this.includeCredentials ? "include" : "omit",
+      body: JSON.stringify({
+        body: body.trim(),
+        parentId: options?.parentId
+      })
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to create comment");
+    }
+    return await response.json();
+  }
+  /**
+   * Fetch replies for a given parent comment
+   */
+  async getReplies(params) {
+    const search = new URLSearchParams();
+    search.set("parentId", params.parentId);
+    if (params.limit) search.set("limit", String(params.limit));
+    if (params.cursor) search.set("cursor", params.cursor);
+    const url = `${this.baseUrl}/api/comments/${encodeURIComponent(params.publicId)}/replies?${search.toString()}`;
+    const key = `replies:${url}`;
+    const now = Date.now();
+    const cached = this.cache.get(key);
+    if (cached && now - cached.t < 1e4) {
+      return cached.data;
+    }
+    const inflight = this.inflight.get(key);
+    if (inflight) return inflight;
+    const promise = (async () => {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: await this.getHeaders(),
+        credentials: this.includeCredentials ? "include" : "omit"
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to fetch replies");
+      }
+      const data = await response.json();
+      const normalized = {
+        comments: data.comments || [],
+        nextCursor: data.nextCursor ?? null,
+        hasMore: Boolean(data.hasMore)
+      };
+      this.cache.set(key, { t: Date.now(), data: normalized });
+      this.inflight.delete(key);
+      return normalized;
+    })();
+    this.inflight.set(key, promise);
+    return promise;
+  }
+  /**
+   * Get reactions for a comment
+   */
+  async getReactions(commentId) {
+    const response = await fetch(
+      `${this.baseUrl}/api/reactions?commentId=${commentId}`,
+      {
+        method: "GET",
+        headers: await this.getHeaders()
+      }
+    );
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch reactions");
+    }
+    return await response.json();
+  }
+  /**
+   * Add or update a reaction (like/dislike)
+   */
+  async setReaction(commentId, value) {
+    const response = await fetch(`${this.baseUrl}/api/comments/vote`, {
+      method: "POST",
+      headers: await this.getHeaders(true),
+      credentials: this.includeCredentials ? "include" : "omit",
+      body: JSON.stringify({ commentId, value })
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to set reaction: ${response.statusText}`);
+    }
+    return response.json();
+  }
+  async updateProfile(data) {
+    const response = await fetch(`${this.baseUrl}/api/commenters/me/update`, {
+      method: "POST",
+      headers: await this.getHeaders(),
+      credentials: this.includeCredentials ? "include" : "omit",
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error ?? `Failed to update profile: ${response.statusText}`);
+    }
+    return response.json();
+  }
+  /**
+   * Get section details by public ID
+   */
+  async getSectionByPublicId(publicId) {
+    const response = await fetch(
+      `${this.baseUrl}/api/sections/public/${publicId}`,
+      {
+        method: "GET",
+        headers: await this.getHeaders()
+      }
+    );
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch section");
+    }
+    const data = await response.json();
+    return data.section;
+  }
+  /**
+   * Get or fetch commenter token
+   */
+  async getCommenterToken() {
+    return await this.tokenManager.getToken();
+  }
+  /**
+   * Get current user info using commenter JWT token
+   */
+  async getCurrentUser() {
+    const response = await fetch(`${this.baseUrl}/api/commenters/me`, {
+      method: "GET",
+      headers: await this.getHeaders()
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  }
+  /**
+   * Link guest account to authenticated user
+   */
+  async linkGuestAccount() {
+    const token = await this.tokenManager.getToken();
+    const guestToken = await this.guestManager.getGuestToken();
+    if (!token || !guestToken) {
+      return null;
+    }
+    try {
+      const response = await fetch(`${this.baseUrl}/api/guest/link`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+          "X-Commenter-Token": token,
+          "X-Guest-Token": guestToken
+        },
+        credentials: this.includeCredentials ? "include" : "omit"
+      });
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error("Error linking guest account:", error);
+      return null;
+    }
+  }
+  /**
+   * Open login popup for authentication
+   * After login, fetches user info using the JWT token and links guest account
+   */
+  async login(redirectUrl) {
+    const token = await this.tokenManager.openLoginPopup(redirectUrl);
+    if (!token) return null;
+    const response = await fetch(`${this.baseUrl}/api/user`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+        "X-Commenter-Token": token
+      },
+      credentials: this.includeCredentials ? "include" : "omit"
+    });
+    let user = null;
+    if (response.ok) {
+      const data = await response.json();
+      user = data?.user ?? null;
+    }
+    const linkResult = await this.linkGuestAccount();
+    return {
+      token,
+      user,
+      linkedComments: linkResult?.linkedComments ?? 0
+    };
+  }
+  /**
+   * Update/edit a comment
+   */
+  async updateComment(commentId, comment) {
+    const token = await this.tokenManager.getToken();
+    if (!token) {
+      throw new Error("Authentication required. Please log in to edit comments.");
+    }
+    const headers = await this.getHeaders(true);
+    const response = await fetch(`${this.baseUrl}/api/comment/${encodeURIComponent(commentId)}`, {
+      method: "PATCH",
+      headers,
+      credentials: this.includeCredentials ? "include" : "omit",
+      body: JSON.stringify({ comment })
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to update comment");
+    }
+    const data = await response.json();
+    return data.comment;
+  }
+  /**
+   * Delete a comment (soft delete)
+   */
+  async deleteComment(commentId) {
+    const token = await this.tokenManager.getToken();
+    if (!token) {
+      throw new Error("Authentication required. Please log in to delete comments.");
+    }
+    const headers = await this.getHeaders(true);
+    const response = await fetch(`${this.baseUrl}/api/comment/${encodeURIComponent(commentId)}`, {
+      method: "DELETE",
+      headers,
+      credentials: this.includeCredentials ? "include" : "omit"
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to delete comment");
+    }
+  }
+  /**
+   * Logout (clear token)
+   */
+  logout() {
+    this.tokenManager.clearToken();
+  }
+};
+
+// src/browser.tsx
+import React2 from "react";
+import { createRoot } from "react-dom/client";
+
 // src/components/CommentSection.tsx
 import { useEffect, useState, useCallback, useRef } from "react";
 import { jsx, jsxs } from "react/jsx-runtime";
@@ -214,9 +758,8 @@ function CommentNode({
               timeAgo(comment.createdAt)
             ] }),
             collapsed && /* @__PURE__ */ jsxs("span", { className: "komently-collapsed-badge", children: [
-              "[",
               hasReplies ? comment.replies.length + 1 : 1,
-              " comments hidden]"
+              " comments hidden"
             ] })
           ]
         }
@@ -533,7 +1076,7 @@ function CommentSection({
     /* @__PURE__ */ jsx("div", { className: "komently-list", children: loading ? /* @__PURE__ */ jsxs("div", { className: "komently-loading-state", children: [
       /* @__PURE__ */ jsx("div", { className: "komently-spinner" }),
       /* @__PURE__ */ jsx("span", { className: "komently-loading-text", children: "awaiting response\u2026" })
-    ] }) : data?.comments.length === 0 ? /* @__PURE__ */ jsx("div", { className: "komently-empty-state", children: /* @__PURE__ */ jsx("p", { children: "The silence here is loud. Be the first to speak." }) }) : /* @__PURE__ */ jsx("div", { className: "komently-comments-wrapper", children: data?.comments.map((comment, i, arr) => /* @__PURE__ */ jsx(
+    ] }) : data?.comments.length === 0 ? /* @__PURE__ */ jsx("div", { className: "komently-empty-state", children: /* @__PURE__ */ jsx("p", { children: "The silence is loud." }) }) : /* @__PURE__ */ jsx("div", { className: "komently-comments-wrapper", children: data?.comments.map((comment, i, arr) => /* @__PURE__ */ jsx(
       "div",
       {
         className: cn(i < arr.length - 1 && "komently-border-bottom", "komently-comment-node-wrapper"),
@@ -619,6 +1162,60 @@ function CommentSection({
     )
   ] }) });
 }
+
+// src/browser.tsx
+import { jsx as jsx2 } from "react/jsx-runtime";
+function init(options) {
+  const { container, ...props } = options;
+  const target = typeof container === "string" ? document.getElementById(container) : container || document.getElementById("komently-container");
+  if (!target) {
+    console.warn("Komently: Target container not found.");
+    return;
+  }
+  const root = createRoot(target);
+  root.render(
+    /* @__PURE__ */ jsx2(React2.StrictMode, { children: /* @__PURE__ */ jsx2(CommentSection, { ...props }) })
+  );
+}
+function autoInit() {
+  const selectors = ["[data-public-id]", "[data-section-id]", "#komently-container"];
+  const containers = document.querySelectorAll(selectors.join(","));
+  containers.forEach((el) => {
+    if (el.hasAttribute("data-komently-initialized")) return;
+    const publicId = el.getAttribute("data-public-id") || el.getAttribute("data-section-id");
+    const baseUrl = el.getAttribute("data-base-url") || void 0;
+    const pageSize = parseInt(el.getAttribute("data-page-size") || "5", 10);
+    if (publicId) {
+      el.setAttribute("data-komently-initialized", "true");
+      const root = createRoot(el);
+      root.render(
+        /* @__PURE__ */ jsx2(React2.StrictMode, { children: /* @__PURE__ */ jsx2(
+          CommentSection,
+          {
+            publicId,
+            baseUrl,
+            pageSize
+          }
+        ) })
+      );
+    }
+  });
+}
+if (typeof window !== "undefined") {
+  window.Komently = { init };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", autoInit);
+  } else {
+    autoInit();
+  }
+}
 export {
-  CommentSection
+  CommentSection,
+  GuestManager,
+  KomentlyClient,
+  TokenManager,
+  configure,
+  getApiKey,
+  getBaseUrl,
+  init
 };

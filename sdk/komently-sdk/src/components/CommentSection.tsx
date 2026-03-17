@@ -278,7 +278,7 @@ function CommentNode({
           </span>
           {collapsed && (
             <span className="komently-collapsed-badge">
-              [{hasReplies ? (comment.replies!.length + 1) : 1} comments hidden]
+              {hasReplies ? (comment.replies!.length + 1) : 1} comments hidden
             </span>
           )}
         </div>
@@ -493,12 +493,12 @@ function CommenterProfileEditor({
           >
             {loading ? "Saving…" : "Save Changes"}
           </button>
-          <button
-            onClick={onCancel}
-            className="komently-button-ghost-sm"
-          >
-            Cancel
-          </button>
+        <button
+          onClick={onCancel}
+          className="komently-button-ghost-sm"
+        >
+          Cancel
+        </button>
         </div>
       </div>
     </div>
@@ -653,7 +653,7 @@ export function CommentSection({
           ) : data?.comments.length === 0 ? (
             <div className="komently-empty-state">
               <p>
-                The silence here is loud. Be the first to speak.
+                The silence is loud.
               </p>
             </div>
           ) : (

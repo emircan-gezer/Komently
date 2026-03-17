@@ -1,94 +1,22 @@
 // lib/ai/moderator.ts
-import { supabase } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
-import OpenAI from "openai";
+// Calls the Python CrewAI microservice for multi-agent moderation.
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY!,
-});
 export interface ModerationResult {
-    status: 'approved' | 'flagged';
+    status: 'approved' | 'flagged' | 'rejected' | 'shadow_hidden';
+    action: 'approved' | 'flagged' | 'rejected' | 'shadow_hidden';
     toxicityScore: number;
     isSpam: boolean;
     metadata: any;
 }
 
-/**
- * Simulates an AI moderation process using provided settings.
- */
-async function ModerateWithAI(body: string, settings: any): Promise<ModerationResult> {
-    const threshold = settings?.ai_toxicity_threshold ?? 0.8;
-    const aiEnabled = settings?.ai_moderation_enabled ?? true;
-
-    if (!aiEnabled) {
-        return {
-            status: "approved",
-            toxicityScore: 0,
-            isSpam: false,
-            metadata: { skipped: true }
-        };
-    }
-
-    try {
-        const response = await openai.moderations.create({
-            model: "omni-moderation-latest",
-            input: body
-        });
-
-        const result = response.results[0];
-
-        // Convert categories into a simple toxicity score
-        const scores = result.category_scores;
-
-        const toxicityScore = Math.max(
-            scores.harassment || 0,
-            scores.hate || 0,
-            scores.violence || 0,
-            scores.sexual || 0
-        );
-
-        const isSpam =
-            body.toLowerCase().includes("buy now") ||
-            body.toLowerCase().includes("win a prize") ||
-            body.includes("http");
-
-        const status =
-            toxicityScore > threshold || result.flagged || isSpam
-                ? "flagged"
-                : "approved";
-
-        return {
-            status,
-            toxicityScore,
-            isSpam,
-            metadata: {
-                model: "omni-moderation-latest",
-                categories: result.categories,
-                scores,
-                flagged: result.flagged,
-                thresholdUsed: threshold,
-                processedAt: new Date().toISOString()
-            }
-        };
-    } catch (err) {
-        console.error("OpenAI moderation error:", err);
-
-        // Fail-safe: approve but log error
-        return {
-            status: "approved",
-            toxicityScore: 0,
-            isSpam: false,
-            metadata: { error: "moderation_failed" }
-        };
-    }
-}
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
 /**
  * Background-friendly function to process moderation for a comment.
- * Updates the database with the result.
+ * Sends the comment to the Python CrewAI service and updates the database.
  */
 export async function processCommentModeration(commentId: string, body: string) {
-    console.log(`[AI Moderator] Starting moderation for comment ${commentId}...`);
+    console.log(`[AI Moderator] Starting crew moderation for comment ${commentId}...`);
 
     try {
         const { createServerClient } = await import('@supabase/ssr');
@@ -103,39 +31,71 @@ export async function processCommentModeration(commentId: string, body: string) 
             }
         );
 
-        // 1. Fetch section settings for this comment
+        // 1. Get the section_id for this comment
         const { data: commentData, error: cErr } = await adminClient
             .from("comments")
-            .select("section_id, comment_sections(settings)")
+            .select("section_id")
             .eq("id", commentId)
             .single();
 
         if (cErr || !commentData) {
-            console.error(`[AI Moderator] Could not find comment/settings for ${commentId}:`, cErr);
+            console.error(`[AI Moderator] Could not find comment ${commentId}:`, cErr);
             return;
         }
 
-        const settings = (commentData as any).comment_sections?.settings;
+        // 2. Call the Python CrewAI microservice
+        const response = await fetch(`${AI_SERVICE_URL}/moderate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                comment_id: commentId,
+                section_id: commentData.section_id,
+                body: body,
+            }),
+        });
 
-        // 2. Process AI moderation with settings
-        const result = await ModerateWithAI(body, settings);
+        if (!response.ok) {
+            throw new Error(`AI service returned ${response.status}: ${await response.text()}`);
+        }
 
-        // 3. Update the comment
+        const verdict = await response.json();
+
+        // Map AI action/status to DB status
+        let dbStatus = 'pending';
+        const aiStatus = verdict.status || 'flagged';
+        const aiAction = verdict.action;
+
+        // Since we synchronized AI service output with DB status names, we can use them directly
+        if (['approved', 'flagged', 'rejected', 'shadow_hidden'].includes(aiStatus)) {
+            dbStatus = aiStatus;
+        } else if (['approved', 'flagged', 'rejected', 'shadow_hidden'].includes(aiAction)) {
+            dbStatus = aiAction;
+        } else {
+            dbStatus = 'flagged'; // default for unknown
+        }
+
+        // 3. Update the comment with the crew's verdict
         const { error: uErr } = await adminClient
             .from("comments")
             .update({
-                moderation_status: result.status,
-                toxicity_score: result.toxicityScore,
-                is_spam: result.isSpam,
-                ai_metadata: result.metadata,
-                updated_at: new Date().toISOString()
+                moderation_status: dbStatus,
+                toxicity_score: verdict.toxicityScore ?? verdict.toxicity_score,
+                is_spam: verdict.isSpam ?? verdict.is_spam,
+                ai_metadata: {
+                    ...verdict.metadata,
+                    reason: verdict.reason,
+                    original_status: aiStatus,
+                    original_action: aiAction,
+                    processedAt: new Date().toISOString(),
+                },
+                updated_at: new Date().toISOString(),
             })
             .eq("id", commentId);
 
         if (uErr) {
             console.error(`[AI Moderator] Error updating comment ${commentId}:`, uErr);
         } else {
-            console.log(`[AI Moderator] Comment ${commentId} moderated: ${result.status}`);
+            console.log(`[AI Moderator] Comment ${commentId} moderated by crew: ${verdict.status}`);
         }
     } catch (err) {
         console.error(`[AI Moderator] Fatal error processing comment ${commentId}:`, err);

@@ -28,47 +28,31 @@ export function init(options: CommentSectionProps & { container?: string | HTMLE
 }
 
 function autoInit() {
-    // Check for elements with data-public-id (new pattern)
-    const dataContainers = document.querySelectorAll('[data-public-id]');
-    dataContainers.forEach((el) => {
-        // If it's already initialized or specifically meant for Komently
-        if (el.id === 'komently-container' || el.hasAttribute('data-komently')) {
-            const publicId = el.getAttribute('data-public-id');
-            const baseUrl = el.getAttribute('data-base-url') || undefined;
-            const pageSize = parseInt(el.getAttribute('data-page-size') || '5', 10);
+    // Check for elements with data-public-id, data-section-id, or the legacy ID
+    const selectors = ['[data-public-id]', '[data-section-id]', '#komently-container'];
+    const containers = document.querySelectorAll(selectors.join(','));
 
-            if (publicId) {
-                const root = createRoot(el);
-                root.render(
-                    <React.StrictMode>
-                        <CommentSection
-                            publicId={publicId}
-                            baseUrl={baseUrl}
-                            pageSize={pageSize}
-                        />
-                    </React.StrictMode>
-                );
-            }
-        }
-    });
+    containers.forEach((el) => {
+        if (el.hasAttribute('data-komently-initialized')) return;
 
-    // Legacy/Simple ID-based check
-    const container = document.getElementById('komently-container');
-    if (container && !container.hasAttribute('data-komently-initialized')) {
-        const publicId = container.getAttribute('data-public-id');
+        const publicId = el.getAttribute('data-public-id') || el.getAttribute('data-section-id');
+        const baseUrl = el.getAttribute('data-base-url') || undefined;
+        const pageSize = parseInt(el.getAttribute('data-page-size') || '5', 10);
+
         if (publicId) {
-            container.setAttribute('data-komently-initialized', 'true');
-            const root = createRoot(container);
+            el.setAttribute('data-komently-initialized', 'true');
+            const root = createRoot(el);
             root.render(
                 <React.StrictMode>
                     <CommentSection
                         publicId={publicId}
-                        baseUrl={container.getAttribute('data-base-url') || undefined}
+                        baseUrl={baseUrl}
+                        pageSize={pageSize}
                     />
                 </React.StrictMode>
             );
         }
-    }
+    });
 }
 
 if (typeof window !== 'undefined') {

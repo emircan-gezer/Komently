@@ -1,6 +1,6 @@
 import type {
   Comment,
-  CommentSection,
+  CommentSectionData,
   ReactionsResponse,
   UserResponse,
 } from './types';
@@ -229,7 +229,7 @@ export class KomentlyClient {
   /**
    * Get section details by public ID
    */
-  async getSectionByPublicId(publicId: string): Promise<CommentSection> {
+  async getSectionByPublicId(publicId: string): Promise<CommentSectionData> {
     const response = await fetch(
       `${this.baseUrl}/api/sections/public/${publicId}`,
       {

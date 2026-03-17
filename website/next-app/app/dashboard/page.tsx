@@ -95,7 +95,7 @@ function CreateSectionModal({
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
-            <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl">
                 <h2 className="mb-5 text-base font-bold tracking-tight">New Comment Section</h2>
 
                 <div className="space-y-4">
@@ -215,10 +215,10 @@ export default function DashboardPage() {
                     }}
                 >
                     {displayStats.map((stat, i) => (
-                        <div key={i} className="bg-card px-5 py-6">
+                        <div key={i} className="bg-card px-4 py-4">
                             {stat ? (
                                 <>
-                                    <div className="font-mono text-2xl font-bold tracking-tight text-foreground">
+                                    <div className="font-mono text-xl font-bold tracking-tight text-foreground">
                                         {stat.value}
                                     </div>
                                     <div className="mt-1.5 text-xs text-muted-foreground">{stat.label}</div>
@@ -236,9 +236,9 @@ export default function DashboardPage() {
                 {/* Sections table */}
                 <div className="overflow-hidden rounded-xl border border-border">
                     {/* Table header */}
-                    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 border-b border-border bg-muted px-5 py-3">
+                    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 border-b border-border bg-muted px-4 py-2">
                         {["Section", "Comments", "Status", "Last Active"].map((col) => (
-                            <span key={col} className="label-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                            <span key={col} className="label-mono text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">
                                 {col}
                             </span>
                         ))}
@@ -246,7 +246,7 @@ export default function DashboardPage() {
 
                     {loading ? (
                         Array(3).fill(null).map((_, i) => (
-                            <div key={i} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 border-b border-border/50 bg-card px-5 py-4 last:border-0">
+                            <div key={i} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 border-b border-border/50 bg-card px-4 py-3 last:border-0">
                                 <div className="space-y-1.5">
                                     <div className="h-4 w-36 rounded bg-muted animate-pulse" />
                                     <div className="h-3 w-24 rounded bg-muted animate-pulse" />
@@ -270,7 +270,7 @@ export default function DashboardPage() {
                         sections.map((section) => (
                             <div
                                 key={section.id}
-                                className="group grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 border-b border-border/50 bg-card px-5 py-4 last:border-0 transition-colors hover:bg-muted/30"
+                                className="group grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 border-b border-border/50 bg-card px-4 py-2.5 last:border-0 transition-colors hover:bg-muted/10"
                             >
                                 {/* Name */}
                                 <Link

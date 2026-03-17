@@ -13,7 +13,7 @@ export interface Comment {
   replies?: Comment[];
 }
 
-export interface CommentSection {
+export interface CommentSectionData {
   id: string;
   public_id: string;
   title: string | null;

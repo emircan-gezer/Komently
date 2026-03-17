@@ -60,6 +60,44 @@ export async function POST(
 
     const settings = (section.settings as any) || {};
 
+    // ── Anti-Spam (Critical) ───────────────────────────────────────────────────
+
+    // 1. Rate Limiting (1 comment per 10s by default)
+    const rateLimitSeconds = settings.rate_limit_seconds ?? 10;
+    const { data: recentComments } = await adminClient
+        .from("comments")
+        .select("created_at")
+        .eq("commenter_id", commenter.commenterId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+    if (recentComments?.[0]) {
+        const lastPostTime = new Date(recentComments[0].created_at).getTime();
+        const now = Date.now();
+        if (now - lastPostTime < rateLimitSeconds * 1000) {
+            return NextResponse.json(
+                { error: `Please wait ${rateLimitSeconds} seconds between comments` },
+                { status: 429 }
+            );
+        }
+    }
+
+    // 2. Duplicate Detection (check last 3 comments for exact body match)
+    const { data: lastFew } = await adminClient
+        .from("comments")
+        .select("body")
+        .eq("commenter_id", commenter.commenterId)
+        .order("created_at", { ascending: false })
+        .limit(3);
+
+    const isDuplicate = lastFew?.some(c => c.body.trim().toLowerCase() === body.toLowerCase());
+    if (isDuplicate) {
+        return NextResponse.json(
+            { error: "Duplicate comment detected" },
+            { status: 422 }
+        );
+    }
+
     // ── Pre-moderation / Validation Based on Section Settings ──────────────────
 
     // 1. Max Characters
@@ -71,10 +109,14 @@ export async function POST(
         );
     }
 
-    // 2. Blacklist
+    // 2. Blacklist (improved with word boundaries)
     const blacklist = settings.blacklist ?? [];
-    const lowerBody = body.toLowerCase();
-    const hit = blacklist.find((word: string) => lowerBody.includes(word.toLowerCase()));
+    const hit = blacklist.find((word: string) => {
+        const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+        return regex.test(body);
+    });
+
     if (hit) {
         return NextResponse.json(
             { error: "Comment contains prohibited language" },
