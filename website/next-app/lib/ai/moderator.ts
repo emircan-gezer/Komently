@@ -15,7 +15,7 @@ const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
  * Background-friendly function to process moderation for a comment.
  * Sends the comment to the Python CrewAI service and updates the database.
  */
-export async function processCommentModeration(commentId: string, body: string) {
+export async function processCommentModeration(commentId: string, body: string, parentId?: string | null) {
     console.log(`[AI Moderator] Starting crew moderation for comment ${commentId}...`);
 
     try {
@@ -51,6 +51,7 @@ export async function processCommentModeration(commentId: string, body: string) 
                 comment_id: commentId,
                 section_id: commentData.section_id,
                 body: body,
+                parent_id: parentId || undefined,
             }),
         });
 

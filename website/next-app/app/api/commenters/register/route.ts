@@ -11,61 +11,81 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
 import { signCommenterToken } from "@/lib/commenter-auth";
 import { cookies } from "next/headers";
+import { z } from "zod";
+
+// ── Zod schema ────────────────────────────────────────────────────────────────
 
 const AVATAR_COLORS = [
-    "#7c3aed", "#0891b2", "#059669", "#dc2626",
-    "#d97706", "#be185d", "#0284c7", "#7c3aed",
-];
+  "#7c3aed", "#0891b2", "#059669", "#dc2626",
+  "#d97706", "#be185d", "#0284c7",
+] as const;
 
-function randomColor() {
-    return AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
+// Hex color regex
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+const RegisterSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .min(2, "username must be at least 2 characters")
+    .max(32, "username must be at most 32 characters")
+    .regex(
+      /^[a-zA-Z0-9_-]+$/,
+      "username may only contain letters, numbers, underscores, and hyphens"
+    ),
+  color: z
+    .string()
+    .regex(HEX_COLOR_RE, "color must be a valid hex color (e.g. #7c3aed)")
+    .optional(),
+});
+
+function randomColor(): string {
+  return AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
 }
 
 export async function POST(request: NextRequest) {
-    let username: string, color: string;
-    try {
-        const json = await request.json();
-        username = (json.username ?? "").toString().trim();
-        color = json.color ?? randomColor();
-    } catch {
-        return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-    }
+  // Parse body
+  let json: unknown;
+  try {
+    json = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
 
-    if (!username || username.length < 2 || username.length > 32) {
-        return NextResponse.json(
-            { error: "username must be between 2 and 32 characters" },
-            { status: 422 }
-        );
-    }
+  // Validate with Zod
+  const parsed = RegisterSchema.safeParse(json);
+  if (!parsed.success) {
+    const message = parsed.error.issues[0]?.message ?? "Validation error";
+    return NextResponse.json({ error: message }, { status: 422 });
+  }
 
-    const cookieStore = await cookies();
-    const adminClient = await supabase(cookieStore);
+  const { username, color = randomColor() } = parsed.data;
 
-    // Check username uniqueness
-    const { data: existing } = await adminClient
-        .from("commenters")
-        .select("id")
-        .eq("username", username)
-        .maybeSingle();
+  const cookieStore = await cookies();
+  const adminClient = await supabase(cookieStore);
 
-    if (existing) {
-        return NextResponse.json(
-            { error: "Username already taken" },
-            { status: 409 }
-        );
-    }
+  // Check username uniqueness
+  const { data: existing } = await adminClient
+    .from("commenters")
+    .select("id")
+    .eq("username", username)
+    .maybeSingle();
 
-    const { data: commenter, error } = await adminClient
-        .from("commenters")
-        .insert({ username, color })
-        .select("id")
-        .single();
+  if (existing) {
+    return NextResponse.json({ error: "Username already taken" }, { status: 409 });
+  }
 
-    if (error || !commenter) {
-        return NextResponse.json({ error: "Failed to create commenter" }, { status: 500 });
-    }
+  const { data: commenter, error } = await adminClient
+    .from("commenters")
+    .insert({ username, color })
+    .select("id")
+    .single();
 
-    const token = await signCommenterToken(commenter.id);
+  if (error || !commenter) {
+    return NextResponse.json({ error: "Failed to create commenter" }, { status: 500 });
+  }
 
-    return NextResponse.json({ commenterId: commenter.id, token }, { status: 201 });
+  const token = await signCommenterToken(commenter.id);
+
+  return NextResponse.json({ commenterId: commenter.id, token }, { status: 201 });
 }

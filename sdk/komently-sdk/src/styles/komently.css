@@ -1,47 +1,60 @@
+/* ── Komently SDK — Design Tokens ─────────────────────────────────────────────
+   Mirrors website globals.css exactly so the embedded widget feels native.
+   Light theme follows :root; dark theme respects [data-theme="dark"] or .dark.
+   ──────────────────────────────────────────────────────────────────────────── */
+
 :root {
-  /* Colors */
-  --komently-primary: oklch(0.537 0.251 264);
+  /* Colors — light (matches globals.css :root) */
+  --komently-primary:            oklch(0.537 0.251 264);  /* Deep Blue */
   --komently-primary-foreground: oklch(1 0 0);
-  --komently-background: oklch(0.985 0 0);
-  --komently-foreground: oklch(0.145 0 0);
-  --komently-card: oklch(1 0 0);
-  --komently-card-foreground: oklch(0.145 0 0);
-  --komently-muted: oklch(0.97 0 0);
-  --komently-muted-foreground: oklch(0.556 0 0);
-  --komently-border: oklch(0.922 0 0);
-  --komently-destructive: oklch(0.58 0.22 27);
-  --komently-ring: oklch(0.537 0.251 264);
+  --komently-background:         oklch(0.985 0 0);
+  --komently-foreground:         oklch(0.145 0 0);
+  --komently-card:               oklch(1 0 0);
+  --komently-card-foreground:    oklch(0.145 0 0);
+  --komently-muted:              oklch(0.97 0 0);
+  --komently-muted-foreground:   oklch(0.556 0 0);
+  --komently-border:             oklch(0.922 0 0);
+  --komently-destructive:        oklch(0.58 0.22 27);
+  --komently-ring:               oklch(0.537 0.251 264);
 
-  /* Radii */
-  --komently-radius: 0.625rem;
+  /* Radii — light uses tighter radius */
+  --komently-radius:    0.625rem;
   --komently-radius-xl: calc(var(--komently-radius) + 4px);
-  --komently-radius-2xl: calc(var(--komently-radius) + 8px);
+  --komently-radius-2xl:calc(var(--komently-radius) + 8px);
 
-  /* Fonts */
-  --komently-font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --komently-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  /* Typography — prefer DM Sans to match the site font */
+  --komently-font-sans: "DM Sans", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --komently-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
 }
 
-[data-theme='dark'],
+/* ── Dark theme — matches website .dark exactly ───────────────────────────── */
+[data-theme="dark"],
 .dark {
-  --komently-background: oklch(0.20 0 0);
-  --komently-foreground: oklch(0.95 0 0);
-  --komently-card: oklch(0.24 0 0);
-  --komently-card-foreground: oklch(0.95 0 0);
-  --komently-primary: oklch(0.65 0.20 255);
-  --komently-muted: oklch(0.24 0 0);
+  --komently-background:       oklch(0.20 0 0);   /* Deeper Charcoal */
+  --komently-foreground:       oklch(0.95 0 0);   /* #F2F2F2 */
+  --komently-card:             oklch(0.24 0 0);   /* #1e1e1e */
+  --komently-card-foreground:  oklch(0.95 0 0);
+  --komently-primary:          oklch(0.65 0.20 255); /* Solid Blue */
+  --komently-primary-foreground: oklch(1 0 0);
+  --komently-muted:            oklch(0.24 0 0);
   --komently-muted-foreground: oklch(0.60 0 0);
-  --komently-border: oklch(1 0 0 / 8%);
-  --komently-destructive: oklch(0.704 0.191 22.216);
-  --komently-ring: oklch(0.65 0.20 255);
-  --komently-radius: 1rem;
+  --komently-border:           oklch(1 0 0 / 8%);  /* Subtle */
+  --komently-destructive:      oklch(0.704 0.191 22.216);
+  --komently-ring:             oklch(0.65 0.20 255);
+  --komently-radius:           1rem;              /* Smooth 2xl base */
+  --komently-radius-xl:        calc(var(--komently-radius) + 4px);
+  --komently-radius-2xl:       calc(var(--komently-radius) + 8px);
 }
 
+/* ── Root reset ───────────────────────────────────────────────────────────── */
 .komently-sdk-root {
   font-family: var(--komently-font-sans);
   color: var(--komently-foreground);
   line-height: 1.5;
   box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
 }
 
 .komently-sdk-root * {
@@ -51,21 +64,20 @@
 
 /* ── Container ───────────────────────────────────────────────────────────── */
 .komently-container {
-  border-radius: var(--komently-radius);
+  border-radius: var(--komently-radius-xl);
   border: 1px solid var(--komently-border);
   background-color: var(--komently-card);
-  box-shadow: none;
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-/* ── Toolbar ───────────────────────────────────────────────────────────── */
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
 .komently-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
+  padding: 0.875rem 1.25rem;
   border-bottom: 1px solid var(--komently-border);
   background-color: color-mix(in srgb, var(--komently-muted) 30%, transparent);
 }
@@ -73,42 +85,45 @@
 .komently-toolbar-title {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.625rem;
 }
 
 .komently-title {
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: 700;
   margin: 0;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em; /* Swiss density */
   color: var(--komently-foreground);
 }
 
 .komently-count {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   background-color: color-mix(in srgb, var(--komently-primary) 10%, transparent);
   color: var(--komently-primary);
   border: 1px solid color-mix(in srgb, var(--komently-primary) 20%, transparent);
-  padding: 0.125rem 0.5rem;
+  padding: 0.1rem 0.45rem;
   border-radius: 9999px;
 }
 
+/* ── Sorting tabs ────────────────────────────────────────────────────────── */
 .komently-sorting-tabs {
   display: flex;
   align-items: center;
   gap: 0;
-  background-color: var(--komently-muted);
+  background-color: color-mix(in srgb, var(--komently-muted) 60%, transparent);
   padding: 2px;
   border-radius: 0.5rem;
 }
 
 .komently-sort-tab {
-  padding: 0.375rem 1rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  border-radius: 0.5rem;
-  transition: all 0.2s;
+  padding: 0.3rem 0.875rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-radius: 0.375rem;
+  transition: background-color 150ms ease, color 150ms ease;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -122,31 +137,30 @@
 .komently-sort-tab-active {
   background-color: var(--komently-card);
   color: var(--komently-foreground);
-  box-shadow: none;
 }
 
-/* ── List ───────────────────────────────────────────────────────────── */
+/* ── Comment list ────────────────────────────────────────────────────────── */
 .komently-list {
-  padding: 1.5rem;
-  min-height: 300px;
+  padding: 1.25rem;
+  min-height: 280px;
   flex: 1 1 0%;
 }
 
 .komently-comments-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 .komently-comment-node-wrapper {
-  padding-bottom: 1.5rem;
+  padding-bottom: 1.25rem;
 }
 
 .komently-border-bottom {
-  border-bottom: 1px solid color-mix(in srgb, var(--komently-border) 40%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--komently-border) 50%, transparent);
 }
 
-/* ── Comment Node ────────────────────────────────────────────────────────── */
+/* ── Comment node ────────────────────────────────────────────────────────── */
 .komently-comment-item {
   display: flex;
   gap: 0.625rem;
@@ -169,18 +183,11 @@
   font-size: 10px;
   font-weight: 700;
   color: white;
-  transition: opacity 0.2s ease, filter 0.2s ease;
+  transition: opacity 150ms ease, filter 150ms ease;
 }
 
-.komently-avatar.size-lg {
-  width: 1.75rem;
-  height: 1.75rem;
-}
-
-.komently-avatar.size-md {
-  width: 1.25rem;
-  height: 1.25rem;
-}
+.komently-avatar.size-lg { width: 1.75rem; height: 1.75rem; }
+.komently-avatar.size-md { width: 1.25rem; height: 1.25rem; }
 
 .komently-avatar-collapsed {
   opacity: 0.3;
@@ -188,15 +195,15 @@
 }
 
 .komently-thread-line {
-  margin-top: 0.5rem;
+  margin-top: 0.375rem;
   width: 2px;
   flex-grow: 1;
-  background-color: color-mix(in srgb, var(--komently-border) 40%, transparent);
-  transition: background-color 0.2s;
+  background-color: color-mix(in srgb, var(--komently-border) 50%, transparent);
+  transition: background-color 150ms ease;
 }
 
 .komently-avatar-container:hover .komently-thread-line {
-  background-color: color-mix(in srgb, var(--komently-primary) 50%, transparent);
+  background-color: color-mix(in srgb, var(--komently-primary) 40%, transparent);
 }
 
 .komently-comment-content {
@@ -208,8 +215,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.25rem;
+  gap: 0.375rem;
+  margin-bottom: 0.2rem;
   cursor: pointer;
   user-select: none;
   padding: 0.125rem 0;
@@ -218,9 +225,9 @@
 .komently-username {
   font-size: 0.75rem;
   font-weight: 700;
-  line-height: 1.25;
-  transition: color 0.2s;
+  letter-spacing: -0.01em;
   color: var(--komently-foreground);
+  transition: color 150ms ease;
 }
 
 .komently-comment-header:hover .komently-username {
@@ -232,78 +239,83 @@
 }
 
 .komently-timestamp {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--komently-muted-foreground);
   opacity: 0.6;
+  font-family: var(--komently-font-mono);
 }
 
 .komently-collapsed-badge {
   font-size: 9px;
-  padding: 0.125rem 0.375rem;
+  padding: 0.1rem 0.35rem;
   border-radius: 0.25rem;
   background-color: var(--komently-muted);
   color: var(--komently-muted-foreground);
-  font-weight: 500;
-  animation: komently-fade-in 0.2s, komently-zoom-in 0.2s;
+  font-weight: 600;
 }
 
 .komently-comment-body {
   font-size: 0.875rem;
   color: var(--komently-foreground);
-  line-height: 1.5;
-  margin: 0 0 0.75rem 0;
-  word-break: break-all;
+  line-height: 1.55;
+  margin: 0 0 0.625rem 0;
+  word-break: break-word;
 }
 
+/* ── Comment actions ─────────────────────────────────────────────────────── */
 .komently-comment-actions {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
-  margin-bottom: 0.5rem;
+  gap: 0.25rem;
+  margin-bottom: 0.375rem;
 }
 
-/* ── Vote Button ─────────────────────────────────────────────────────────── */
+/* ── Vote button ─────────────────────────────────────────────────────────── */
 .komently-vote-btn {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.25rem 0.75rem;
-  border-radius: 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-family: var(--komently-font-mono);
+  padding: 0.2rem 0.625rem;
+  border-radius: 0.625rem;
   border: 1px solid transparent;
-  transition: all 0.2s;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
   cursor: pointer;
   background: transparent;
   color: var(--komently-muted-foreground);
 }
 
-.komently-vote-btn:hover {
-  background-color: var(--komently-muted);
+.komently-vote-btn:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--komently-muted) 70%, transparent);
   color: var(--komently-foreground);
 }
 
 .komently-vote-btn-active {
   background-color: color-mix(in srgb, var(--komently-primary) 10%, transparent);
-  border-color: color-mix(in srgb, var(--komently-primary) 30%, transparent);
+  border-color: color-mix(in srgb, var(--komently-primary) 25%, transparent);
   color: var(--komently-primary);
 }
 
 .komently-vote-btn:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: 0.4;
 }
 
 .komently-divider {
   width: 1px;
   height: 0.75rem;
   background-color: var(--komently-border);
-  margin: 0 0.25rem;
+  margin: 0 0.125rem;
 }
 
+/* ── Reply trigger ───────────────────────────────────────────────────────── */
 .komently-reply-trigger {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.25rem 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.625rem;
   border-radius: 0.5rem;
-  transition: all 0.2s;
+  transition: background-color 150ms ease, color 150ms ease;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -312,7 +324,7 @@
 
 .komently-reply-trigger:hover {
   color: var(--komently-foreground);
-  background-color: var(--komently-muted);
+  background-color: color-mix(in srgb, var(--komently-muted) 70%, transparent);
 }
 
 .komently-reply-trigger-active {
@@ -320,43 +332,44 @@
   background-color: color-mix(in srgb, var(--komently-primary) 10%, transparent);
 }
 
-/* ── Boxes/Inputs ────────────────────────────────────────────────────────── */
+/* ── Inputs / textareas ──────────────────────────────────────────────────── */
 .komently-reply-box-container,
 .komently-new-comment-container {
   margin-top: 0.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
-  animation: komently-fade-in 0.2s, komently-slide-down 0.2s;
 }
 
 .komently-textarea {
   width: 100%;
   resize: none;
-  border-radius: var(--komently-radius-2xl);
+  border-radius: var(--komently-radius-xl);
   border: 1px solid var(--komently-border);
-  background-color: color-mix(in srgb, var(--komently-muted) 30%, transparent);
+  background-color: color-mix(in srgb, var(--komently-muted) 25%, transparent);
   padding: 0.75rem 1rem;
   font-size: 0.875rem;
+  font-family: var(--komently-font-sans);
   color: var(--komently-foreground);
-  transition: all 0.2s;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
   outline: none;
 }
 
 .komently-textarea:focus {
   border-color: color-mix(in srgb, var(--komently-primary) 40%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--komently-primary) 40%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--komently-primary) 12%, transparent);
 }
 
 .komently-textarea::placeholder {
-  color: color-mix(in srgb, var(--komently-muted-foreground) 70%, transparent);
+  color: color-mix(in srgb, var(--komently-muted-foreground) 60%, transparent);
 }
 
 .komently-error-text {
   font-size: 11px;
   color: var(--komently-destructive);
   margin: 0;
+  font-weight: 600;
 }
 
 .komently-reply-actions {
@@ -364,21 +377,24 @@
   gap: 0.5rem;
 }
 
-/* ── Buttons ────────────────────────────────────────────────────────────── */
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
 .komently-button-primary {
-  padding: 0.5rem 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1.75rem;
   border-radius: var(--komently-radius-2xl);
   background-color: var(--komently-primary);
   color: var(--komently-primary-foreground);
   font-weight: 700;
+  font-size: 0.875rem;
   border: none;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition: background-color 150ms ease;
 }
 
-.komently-button-primary:hover {
-  background-color: color-mix(in srgb, var(--komently-primary) 90%, black);
+.komently-button-primary:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--komently-primary) 85%, black);
 }
 
 .komently-button-primary:disabled {
@@ -387,26 +403,35 @@
 }
 
 .komently-button-primary-sm {
+  display: inline-flex;
+  align-items: center;
   font-size: 11px;
   font-weight: 700;
-  padding: 0.375rem 1rem;
+  letter-spacing: 0.04em;
+  padding: 0.3rem 0.875rem;
   border-radius: var(--komently-radius-2xl);
   background-color: var(--komently-primary);
   color: var(--komently-primary-foreground);
   border: none;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 1px 2px 0 color-mix(in srgb, var(--komently-primary) 10%, transparent);
+  transition: background-color 150ms ease;
 }
 
-.komently-button-primary-sm:active {
-  transform: scale(0.95);
+.komently-button-primary-sm:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--komently-primary) 85%, black);
+}
+
+.komently-button-primary-sm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .komently-button-primary-heavy {
+  display: inline-flex;
+  align-items: center;
   font-size: 11px;
   font-weight: 900;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   padding: 0.5rem 1.5rem;
   border-radius: var(--komently-radius-2xl);
@@ -414,48 +439,56 @@
   color: var(--komently-primary-foreground);
   border: none;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 4px 6px -1px color-mix(in srgb, var(--komently-primary) 10%, transparent);
+  transition: background-color 150ms ease, transform 150ms ease;
+}
+
+.komently-button-primary-heavy:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--komently-primary) 85%, black);
 }
 
 .komently-button-primary-heavy:active {
-  transform: scale(0.95);
+  transform: scale(0.97);
+}
+
+.komently-button-primary-heavy:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .komently-button-ghost-sm {
+  display: inline-flex;
+  align-items: center;
   font-size: 11px;
-  font-weight: 500;
-  padding: 0.375rem 1rem;
+  font-weight: 600;
+  padding: 0.3rem 0.875rem;
   border-radius: var(--komently-radius-2xl);
   background: transparent;
   color: var(--komently-muted-foreground);
   border: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 150ms ease, color 150ms ease;
 }
 
 .komently-button-ghost-sm:hover {
   color: var(--komently-foreground);
-  background-color: var(--komently-muted);
+  background-color: color-mix(in srgb, var(--komently-muted) 70%, transparent);
 }
 
-/* ── Auth/Login Prompts ──────────────────────────────────────────────────── */
+/* ── Auth / login prompts ────────────────────────────────────────────────── */
 .komently-auth-prompt {
   margin-top: 0.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  align-items: flex-start;
+  align-items: center;
+  gap: 0.625rem;
   font-size: 11px;
   color: var(--komently-muted-foreground);
-  font-style: italic;
 }
 
 .komently-login-prompt {
-  padding: 1.5rem;
+  padding: 1.25rem 1.5rem;
   border-top: 1px solid var(--komently-border);
-  background-color: color-mix(in srgb, var(--komently-muted) 10%, transparent);
+  background-color: color-mix(in srgb, var(--komently-muted) 8%, transparent);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -464,23 +497,24 @@
 }
 
 .komently-login-text {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--komently-muted-foreground);
-  font-style: italic;
 }
 
+/* New comment box override (sits at the bottom of the container) */
 .komently-new-comment-container {
-  padding: 1rem 1.5rem;
+  padding: 1rem 1.25rem;
   border-top: 1px solid var(--komently-border);
-  background-color: color-mix(in srgb, var(--komently-muted) 10%, transparent);
+  background-color: color-mix(in srgb, var(--komently-muted) 8%, transparent);
   gap: 0.5rem;
+  margin: 0;
 }
 
 /* ── Pagination ──────────────────────────────────────────────────────────── */
 .komently-pagination {
-  padding: 1rem 1.5rem;
+  padding: 0.875rem 1.25rem;
   border-top: 1px solid var(--komently-border);
-  background-color: color-mix(in srgb, var(--komently-muted) 20%, transparent);
+  background-color: color-mix(in srgb, var(--komently-muted) 15%, transparent);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -489,11 +523,13 @@
 .komently-pagination-btn {
   font-size: 11px;
   font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--komently-muted-foreground);
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: color 0.2s;
+  transition: color 150ms ease;
 }
 
 .komently-pagination-btn:hover:not(:disabled) {
@@ -506,16 +542,17 @@
 }
 
 .komently-pagination-info {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
+  font-family: var(--komently-font-mono);
   color: var(--komently-muted-foreground);
 }
 
-/* ── Profile ───────────────────────────────────────────────────────────── */
+/* ── Profile bar ─────────────────────────────────────────────────────────── */
 .komently-profile-bar {
-  padding: 0.75rem 1.5rem;
+  padding: 0.625rem 1.25rem;
   border-top: 1px solid var(--komently-border);
-  background-color: color-mix(in srgb, var(--komently-muted) 10%, transparent);
+  background-color: color-mix(in srgb, var(--komently-muted) 8%, transparent);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -542,44 +579,44 @@
 
 .komently-profile-text {
   font-size: 0.75rem;
-  color: color-mix(in srgb, var(--komently-foreground) 80%, transparent);
+  color: color-mix(in srgb, var(--komently-foreground) 70%, transparent);
 }
 
 .komently-edit-profile-btn {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   background: transparent;
   border: none;
   cursor: pointer;
-  color: color-mix(in srgb, var(--komently-foreground) 80%, transparent);
-  transition: color 0.2s;
+  color: color-mix(in srgb, var(--komently-foreground) 60%, transparent);
+  transition: color 150ms ease;
 }
 
 .komently-edit-profile-btn:hover {
-  color: var(--komently-foreground);
+  color: var(--komently-primary);
 }
 
-/* ── Profile Editor ───────────────────────────────────────────────────────── */
+/* ── Profile editor ──────────────────────────────────────────────────────── */
 .komently-profile-editor {
-  padding: 1rem 1.5rem;
+  padding: 1rem 1.25rem;
   border-top: 1px solid var(--komently-border);
-  background-color: color-mix(in srgb, var(--komently-muted) 10%, transparent);
+  background-color: color-mix(in srgb, var(--komently-muted) 8%, transparent);
 }
 
 .komently-profile-editor-content {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  max-width: 24rem;
+  gap: 0.875rem;
+  max-width: 22rem;
 }
 
 .komently-profile-editor-title {
   font-family: var(--komently-font-mono);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--komently-muted-foreground);
   margin: 0;
@@ -592,55 +629,49 @@
 }
 
 .komently-label {
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--komently-muted-foreground);
-  margin-bottom: 0.25rem;
 }
 
 .komently-input {
   width: 100%;
-  border-radius: 0.75rem;
+  border-radius: var(--komently-radius-xl);
   border: 1px solid var(--komently-border);
-  background-color: color-mix(in srgb, var(--komently-muted) 30%, transparent);
-  padding: 0.5rem 1rem;
+  background-color: color-mix(in srgb, var(--komently-muted) 25%, transparent);
+  padding: 0.5rem 0.875rem;
   font-size: 0.875rem;
+  font-family: var(--komently-font-sans);
   color: var(--komently-foreground);
   outline: none;
-  transition: all 0.2s;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
 .komently-input:focus {
-  border-color: color-mix(in srgb, var(--komently-primary) 20%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--komently-primary) 20%, transparent);
+  border-color: color-mix(in srgb, var(--komently-primary) 40%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--komently-primary) 12%, transparent);
 }
 
 .komently-profile-editor-actions {
   display: flex;
   gap: 0.5rem;
-  margin-top: 0.5rem;
 }
 
-/* ── Loader ──────────────────────────────────────────────────────────── */
-/* Removed all entry/hover animations for Functional Minimalism */
-
+/* ── Spinner / loading ───────────────────────────────────────────────────── */
 .komently-spinner {
   width: 1.25rem;
   height: 1.25rem;
   border: 2px solid var(--komently-border);
   border-top-color: var(--komently-primary);
   border-radius: 9999px;
-  animation: komently-spin 0.8s linear infinite;
+  animation: komently-spin 0.7s linear infinite;
 }
 
 @keyframes komently-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 
 .komently-loading-state {
@@ -649,24 +680,38 @@
   align-items: center;
   justify-content: center;
   padding: 4rem 0;
-  gap: 0.5rem;
+  gap: 0.625rem;
 }
 
 .komently-loading-text {
-  font-size: 0.75rem;
+  font-family: var(--komently-font-mono);
+  font-size: 0.7rem;
   font-weight: 500;
   color: var(--komently-muted-foreground);
-  opacity: 0.7;
+  opacity: 0.6;
+  letter-spacing: 0.05em;
 }
 
 .komently-empty-state {
   text-align: center;
-  padding: 6rem 0;
+  padding: 5rem 0;
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--komently-muted-foreground);
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
-/* ── Typography & Swiss Utils ────────────────────────────────────────────── */
-/* .komently-label-mono deprecated */
+/* ── Animations ──────────────────────────────────────────────────────────── */
+@keyframes komently-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes komently-slide-down {
+  from { transform: translateY(-4px); }
+  to   { transform: translateY(0); }
+}
+
+.komently-body-reveal {
+  animation: komently-fade-in 0.15s ease, komently-slide-down 0.15s ease;
+}

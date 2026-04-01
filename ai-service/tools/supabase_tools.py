@@ -93,42 +93,130 @@ class UpdateCommentStatusTool(BaseTool):
         return json.dumps({"error": "Comment not found or update failed"})
 
 
-# ── Update Section Settings ───────────────────────────────────────────────────
+# ── Update Section ───────────────────────────────────────────────────
 
-class UpdateSectionSettingsInput(BaseModel):
+class UpdateSectionInput(BaseModel):
     section_id: str = Field(description="UUID of the comment section")
+    status: str = Field(default=None, description="Set section status: 'active' or 'paused'. Optional.")
     settings_json: str = Field(
-        description="JSON string of settings to merge, e.g. "
-        '\'{"ai_toxicity_threshold": 0.5, "max_chars": 3000}\''
+        default=None,
+        description=(
+            "JSON string of settings to merge. Supported keys: max_chars, blacklist, "
+            "ai_moderation_enabled, ai_toxicity_threshold, spam_guard_enabled, "
+            "context_analyzer_enabled, sentiment_analysis_enabled, auto_action_strikes."
+        )
     )
 
-class UpdateSectionSettingsTool(BaseTool):
-    name: str = "update_section_settings"
+class UpdateSectionTool(BaseTool):
+    name: str = "update_section"
     description: str = (
-        "Update section settings by merging the provided JSON into the existing settings. "
-        "Supported keys: max_chars, blacklist, ai_moderation_enabled, ai_toxicity_threshold."
+        "Update section status ('active' or 'paused') and/or merge new settings "
+        "via a JSON string. Use this to change moderation thresholds, toggle spam guard, "
+        "or completely halt comment ingestion."
     )
-    args_schema: Type[BaseModel] = UpdateSectionSettingsInput
+    args_schema: Type[BaseModel] = UpdateSectionInput
 
-    def _run(self, section_id: str, settings_json: str) -> str:
-        try:
-            new_settings = json.loads(settings_json)
-        except json.JSONDecodeError:
-            return json.dumps({"error": "Invalid JSON in settings_json"})
-
+    def _run(self, section_id: str, status: str = None, settings_json: str = None) -> str:
         sb = _get_client()
-        # Fetch current settings
-        current = sb.table("comment_sections").select("settings").eq("id", section_id).single().execute()
+        
+        # Fetch current record
+        current = sb.table("comment_sections").select("settings, status").eq("id", section_id).single().execute()
         if not current.data:
             return json.dumps({"error": "Section not found"})
+        
+        updates = {}
+        if status in ("active", "paused"):
+            updates["status"] = status
+            
+        if settings_json:
+            try:
+                new_settings = json.loads(settings_json)
+                merged = {**(current.data.get("settings") or {}), **new_settings}
+                updates["settings"] = merged
+            except json.JSONDecodeError:
+                return json.dumps({"error": "Invalid JSON in settings_json"})
 
-        merged = {**(current.data.get("settings") or {}), **new_settings}
+        if not updates:
+            return json.dumps({"error": "No valid updates provided. Provide status or settings_json."})
+
         resp = (
             sb.table("comment_sections")
-            .update({"settings": merged})
+            .update(updates)
             .eq("id", section_id)
             .execute()
         )
         if resp.data:
-            return json.dumps({"success": True, "settings": merged})
-        return json.dumps({"error": "Failed to update settings"})
+            return json.dumps({"success": True, "updated_fields": list(updates.keys())})
+        return json.dumps({"error": "Failed to update section"})
+
+# ── Fetch Parent Thread ───────────────────────────────────────────────────────
+
+class FetchParentThreadInput(BaseModel):
+    comment_id: str = Field(description="UUID of the parent comment")
+
+class FetchParentThreadTool(BaseTool):
+    name: str = "fetch_parent_thread"
+    description: str = (
+        "Fetch a specific parent comment by its UUID to understand the context of a reply."
+    )
+    args_schema: Type[BaseModel] = FetchParentThreadInput
+
+    def _run(self, comment_id: str) -> str:
+        sb = _get_client()
+        resp = (
+            sb.table("comments")
+            .select("id, body, created_at, commenters(username)")
+            .eq("id", comment_id)
+            .single()
+            .execute()
+        )
+        if resp.data:
+            return json.dumps(resp.data, default=str)
+        return json.dumps({"error": "Parent comment not found"})
+
+# ── Trigger Intel Report ──────────────────────────────────────────────────────
+
+import requests
+
+class TriggerIntelReportInput(BaseModel):
+    section_id: str = Field(description="UUID of the comment section")
+
+class TriggerIntelReportTool(BaseTool):
+    name: str = "trigger_intel_report"
+    description: str = (
+        "Trigger the Senior Data Analyst agent to generate a fresh 7-day Intel Report "
+        "and Markdown Executive Summary for the specified section. Use this if the user asks for a report, metrics, or analysis."
+    )
+    args_schema: Type[BaseModel] = TriggerIntelReportInput
+
+    def _run(self, section_id: str) -> str:
+        sb = _get_client()
+        
+        # Check for active processing report
+        active = sb.table("section_reports").select("id").eq("section_id", section_id).eq("status", "processing").execute()
+        if active.data and len(active.data) > 0:
+            return json.dumps({"error": "A report is already currently processing. Please tell the user to wait for it to finish."})
+        
+        # Insert new processing row
+        resp = sb.table("section_reports").insert({"section_id": section_id, "status": "processing"}).execute()
+        if not resp.data:
+            return json.dumps({"error": "Failed to create processing report row"})
+            
+        report_id = resp.data[0]["id"]
+        
+        # Trigger background generation via internal fast endpoint
+        try:
+            requests.post(
+                "http://localhost:8000/generate-report",
+                json={"section_id": section_id, "report_id": report_id},
+                timeout=2 # Fire and forget!
+            )
+        except requests.exceptions.ReadTimeout:
+            pass # Expected timeout since the generation takes ~15-20s, but we get the 202 quickly anyway.
+        except Exception as e:
+            print("Failed to background ping generation:", e)
+            
+        return json.dumps({
+            "success": True, 
+            "message": "Intel Report generation initiated. Tell the user it will be available in the Reports tab in about 20-30 seconds."
+        })

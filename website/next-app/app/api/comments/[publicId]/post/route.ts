@@ -11,6 +11,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
 import { verifyCommenterToken } from "@/lib/commenter-auth";
 import { cookies } from "next/headers";
+import { z } from "zod";
+
+// ── Zod schemas ───────────────────────────────────────────────────────────────
+
+const PostCommentSchema = z.object({
+  body: z
+    .string()
+    .trim()
+    .min(1, "Comment cannot be empty")
+    .max(10_000, "Comment must be at most 10 000 characters"),
+  parentId: z
+    .string()
+    .uuid("parentId must be a valid UUID")
+    .optional(),
+});
 
 export async function POST(
     request: NextRequest,
@@ -27,21 +42,19 @@ export async function POST(
         );
     }
 
-    // 2 — parse body
+    // 2 — parse + validate body with Zod
     let body: string, parentId: string | undefined;
     try {
         const json = await request.json();
-        body = (json.body ?? "").toString().trim();
-        parentId = json.parentId ?? undefined;
+        const parsed = PostCommentSchema.safeParse(json);
+        if (!parsed.success) {
+            const message = parsed.error.issues[0]?.message ?? "Validation error";
+            return NextResponse.json({ error: message }, { status: 422 });
+        }
+        body = parsed.data.body;
+        parentId = parsed.data.parentId;
     } catch {
         return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-    }
-
-    if (!body || body.length < 1 || body.length > 10000) {
-        return NextResponse.json(
-            { error: "body must be between 1 and 10 000 characters" },
-            { status: 422 }
-        );
     }
 
     const cookieStore = await cookies();
@@ -165,7 +178,7 @@ export async function POST(
 
     // trigger async AI moderation (non-blocking)
     import("@/lib/ai/moderator").then(({ processCommentModeration }) => {
-        processCommentModeration(inserted.id, body);
+        processCommentModeration(inserted.id, body, c.parent_id);
     });
 
     return NextResponse.json(

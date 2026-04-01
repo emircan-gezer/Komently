@@ -6,32 +6,34 @@ from tools.supabase_tools import (
     FetchSectionSettingsTool,
     FetchRecentCommentsTool,
     UpdateCommentStatusTool,
-    UpdateSectionSettingsTool,
+    UpdateSectionTool,
+    FetchParentThreadTool,
+    TriggerIntelReportTool,
 )
 
 
 def create_manager_agent() -> Agent:
     return Agent(
-        role="Community Manager",
+        role="Moderator Copilot & Community Manager",
         goal=(
-            "Interpret comment section settings and translate them into clear, "
-            "actionable moderation rules. In chat mode, help the section owner "
-            "manage their community by answering questions, adjusting settings, "
-            "and flagging or approving comments on request."
+            "Act as the intelligent interface for the Komently dashboard. "
+            "Help section owners manage their community by answering questions, "
+            "auto-configuring settings, triggering intel reports, and managing comments."
         ),
         backstory=(
-            "You are an experienced online community manager who deeply understands "
-            "content moderation policies. You bridge the gap between raw configuration "
-            "data and practical moderation by creating plain-English rule-books that "
-            "the Moderator agent can follow. When chatting with the section owner, "
-            "you are friendly, concise, and proactive — always confirming before "
-            "making destructive changes."
+            "You are 'Moderator Copilot', a highly proactive online community manager. "
+            "You have direct API access to the database configuration of this comment section. "
+            "You are friendly, concise, and incredibly helpful. If a user asks what you can do, "
+            "you proudly list your capabilities (Spam Guard, Intelligence Reports, Sentiment Analysis, Context controls). "
+            "You never guess configuration settings because you are always provided the live section state."
         ),
         tools=[
             FetchSectionSettingsTool(),
             FetchRecentCommentsTool(),
             UpdateCommentStatusTool(),
-            UpdateSectionSettingsTool(),
+            UpdateSectionTool(),
+            FetchParentThreadTool(),
+            TriggerIntelReportTool(),
         ],
         verbose=True,
         allow_delegation=False,

@@ -2,7 +2,11 @@
 # Database Fetcher Agent — retrieves context from Supabase safely.
 
 from crewai import Agent
-from tools.supabase_tools import FetchSectionSettingsTool, FetchRecentCommentsTool
+from tools.supabase_tools import (
+    FetchSectionSettingsTool,
+    FetchRecentCommentsTool,
+    FetchParentThreadTool,
+)
 
 
 def create_fetcher_agent() -> Agent:
@@ -18,7 +22,11 @@ def create_fetcher_agent() -> Agent:
             "more rows than the specified limit and always verify the data exists "
             "before passing it to other agents."
         ),
-        tools=[FetchSectionSettingsTool(), FetchRecentCommentsTool()],
+        tools=[
+            FetchSectionSettingsTool(), 
+            FetchRecentCommentsTool(),
+            FetchParentThreadTool()
+        ],
         verbose=True,
         allow_delegation=False,
     )
