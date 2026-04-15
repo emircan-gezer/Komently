@@ -14,10 +14,11 @@ from pydantic import BaseModel, Field
 load_dotenv()                       # Load .env before importing agents
 
 from crew import ModerationCrew, ChatCrew, AnalystCrew
+from graph import komently_app
 from tools.supabase_tools import _get_client
 
 
-# ── Lifespan ──────────────────────────────────────────────────────────────────
+# Lifespan
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -40,14 +41,14 @@ app.add_middleware(
 )
 
 
-# ── Health ────────────────────────────────────────────────────────────────────
+# Health
 
 @app.get("/health")
 async def health():
     return {"status": "ok"}
 
 
-# ── /moderate ─────────────────────────────────────────────────────────────────
+# /moderate
 
 class ModerateRequest(BaseModel):
     comment_id: str
@@ -72,38 +73,15 @@ async def moderate_comment(req: ModerateRequest):
       3. Moderator → evaluates the comment → JSON verdict
     """
     try:
-        parent_context = ""
-        if req.parent_id:
-            parent_context = f"Crucially, fetch the parent comment thread with comment_id '{req.parent_id}' to provide context.\n"
-
+        # Use LangGraph Orchestrator
         inputs = {
+            "input": req.body,
             "section_id": req.section_id,
-            "parent_context": parent_context,
-            "comment_body": req.body
+            "origin": "/moderate",
         }
-
-        moderation_crew = ModerationCrew()
-        result = moderation_crew.crew().kickoff(inputs=inputs)
-
-        # Parse the moderator's JSON output
-        raw = str(result).strip()
-        # Try to extract JSON from the response
-        if "```" in raw:
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-            raw = raw.strip()
-
-        try:
-            verdict = json.loads(raw)
-        except json.JSONDecodeError:
-            # Fallback: approve if we can't parse
-            verdict = {
-                "status": "approved",
-                "toxicityScore": 0.0,
-                "isSpam": False,
-                "reason": "AI output could not be parsed; defaulting to approved.",
-            }
+        
+        output = komently_app.invoke(inputs)
+        verdict = output.get("crew_output", {})
 
         return ModerationVerdict(
             status=verdict.get("status", "approved"),
@@ -112,9 +90,9 @@ async def moderate_comment(req: ModerateRequest):
             is_spam=bool(verdict.get("isSpam", False)),
             reason=verdict.get("reason", ""),
             metadata={
+                "orchestrator": "langgraph",
                 "agents": ["fetcher", "manager", "moderator"],
-                "sentiment_score": float(verdict.get("sentimentScore", 0.0)),
-                "raw_output": str(result)[:500],
+                "raw_output": str(output.get("result"))[:500],
             },
         )
 
@@ -130,7 +108,7 @@ async def moderate_comment(req: ModerateRequest):
         )
 
 
-# ── /chat ─────────────────────────────────────────────────────────────────────
+# /chat
 
 class ChatRequest(BaseModel):
     section_id: str
@@ -148,32 +126,16 @@ async def chat_with_agent(req: ChatRequest):
     with access to all Supabase tools.
     """
     try:
-        # Build conversation context
-        history_text = ""
-        for msg in req.history[-10:]:  # Keep last 10 messages
-            role = msg.get("role", "user")
-            content = msg.get("content", "")
-            history_text += f"\n{role.upper()}: {content}"
-            
-        # Natively pre-fetch section settings so the Agent has immediate context
-        sb = _get_client()
-        current_state = "Unable to fetch current state."
-        try:
-            resp = sb.table("comment_sections").select("settings, status, name").eq("public_id", req.section_id).single().execute()
-            if resp.data:
-                current_state = json.dumps(resp.data, indent=2)
-        except Exception as e:
-            print("Chat pre-fetch warning:", e)
-
+        # Use LangGraph Orchestrator
         inputs = {
+            "input": req.message,
             "section_id": req.section_id,
-            "current_state": current_state,
-            "history_text": history_text,
-            "user_message": req.message
+            "history": req.history,
+            "origin": "/chat"
         }
         
-        chat_crew = ChatCrew()
-        result = str(chat_crew.crew().kickoff(inputs=inputs)).strip()
+        output = komently_app.invoke(inputs)
+        result = output.get("result", "")
 
         # Parse actions from the end of the response
         actions: list[str] = []
@@ -195,7 +157,7 @@ async def chat_with_agent(req: ChatRequest):
             actions_taken=[],
         )
 
-# ── /generate-report ──────────────────────────────────────────────────────────
+# /generate-report
 
 class GenerateReportRequest(BaseModel):
     section_id: str
@@ -204,11 +166,12 @@ class GenerateReportRequest(BaseModel):
 def run_analyst_crew(section_id: str, report_id: str):
     try:
         inputs = {
+            "input": "Generate a weekly report.",
             "section_id": section_id,
-            "report_id": report_id
+            "flags": {"report_id": report_id},
+            "origin": "/report"
         }
-        analyst_crew = AnalystCrew()
-        analyst_crew.crew().kickoff(inputs=inputs)
+        komently_app.invoke(inputs)
     except Exception as e:
         traceback.print_exc()
 
@@ -221,7 +184,7 @@ async def generate_report(req: GenerateReportRequest, tasks: BackgroundTasks):
     tasks.add_task(run_analyst_crew, req.section_id, req.report_id)
     return {"status": "processing", "report_id": req.report_id}
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+# Entry point
 
 if __name__ == "__main__":
     import uvicorn

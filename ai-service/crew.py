@@ -64,19 +64,22 @@ class ModerationCrew:
     @task
     def fetch_task(self) -> Task:
         return Task(
-            config=self.tasks_config['fetch_task']
+            config=self.tasks_config['fetch_task'],
+            agent=self.fetcher()
         )
 
     @task
     def manage_task(self) -> Task:
         return Task(
-            config=self.tasks_config['manage_task']
+            config=self.tasks_config['manage_task'],
+            agent=self.manager()
         )
 
     @task
     def moderate_task(self) -> Task:
         return Task(
-            config=self.tasks_config['moderate_task']
+            config=self.tasks_config['moderate_task'],
+            agent=self.moderator()
         )
 
     @crew
@@ -115,7 +118,8 @@ class ChatCrew:
     @task
     def chat_task(self) -> Task:
         return Task(
-            config=self.tasks_config['chat_task']
+            config=self.tasks_config['chat_task'],
+            agent=self.manager()
         )
 
     @crew
@@ -151,7 +155,8 @@ class AnalystCrew:
     @task
     def report_task(self) -> Task:
         return Task(
-            config=self.tasks_config['report_task']
+            config=self.tasks_config['report_task'],
+            agent=self.analyst()
         )
 
     @crew
