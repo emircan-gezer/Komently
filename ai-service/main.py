@@ -73,26 +73,29 @@ async def moderate_comment(req: ModerateRequest):
       3. Moderator → evaluates the comment → JSON verdict
     """
     try:
-        # Use LangGraph Orchestrator
+        # Use Advanced LangGraph Orchestrator
         inputs = {
             "input": req.body,
             "section_id": req.section_id,
-            "origin": "/moderate",
+            "metadata": {
+                "origin": "/moderate",
+                "comment_id": req.comment_id
+            },
         }
         
-        output = komently_app.invoke(inputs)
+        config = {"configurable": {"thread_id": f"mod_{req.section_id}_{req.comment_id}"}}
+        output = komently_app.invoke(inputs, config=config)
         verdict = output.get("crew_output", {})
 
         return ModerationVerdict(
-            status=verdict.get("status", "approved"),
-            action=verdict.get("action", "approve"),
-            toxicity_score=float(verdict.get("toxicityScore", 0.0)),
-            is_spam=bool(verdict.get("isSpam", False)),
-            reason=verdict.get("reason", ""),
+            status=verdict.get("status", "approved") if isinstance(verdict, dict) else "approved",
+            action=verdict.get("action", "approve") if isinstance(verdict, dict) else "approve",
+            toxicity_score=float(verdict.get("toxicityScore", 0.0)) if isinstance(verdict, dict) else 0.0,
+            is_spam=bool(verdict.get("isSpam", False)) if isinstance(verdict, dict) else False,
+            reason=verdict.get("reason", "") if isinstance(verdict, dict) else "Processed",
             metadata={
-                "orchestrator": "langgraph",
-                "agents": ["fetcher", "manager", "moderator"],
-                "raw_output": str(output.get("result"))[:500],
+                "orchestrator": "langgraph-advanced",
+                "raw_output": str(output.get("final_response"))[:500],
             },
         )
 
@@ -126,16 +129,17 @@ async def chat_with_agent(req: ChatRequest):
     with access to all Supabase tools.
     """
     try:
-        # Use LangGraph Orchestrator
+        # Use Advanced LangGraph Orchestrator
         inputs = {
             "input": req.message,
             "section_id": req.section_id,
             "history": req.history,
-            "origin": "/chat"
+            "metadata": {"origin": "/chat"}
         }
         
-        output = komently_app.invoke(inputs)
-        result = output.get("result", "")
+        config = {"configurable": {"thread_id": f"chat_{req.section_id}"}}
+        output = komently_app.invoke(inputs, config=config)
+        result = output.get("final_response", "")
 
         # Parse actions from the end of the response
         actions: list[str] = []
@@ -168,10 +172,13 @@ def run_analyst_crew(section_id: str, report_id: str):
         inputs = {
             "input": "Generate a weekly report.",
             "section_id": section_id,
-            "flags": {"report_id": report_id},
-            "origin": "/report"
+            "metadata": {
+                "origin": "/report",
+                "report_id": report_id
+            }
         }
-        komently_app.invoke(inputs)
+        config = {"configurable": {"thread_id": f"report_{section_id}_{report_id}"}}
+        komently_app.invoke(inputs, config=config)
     except Exception as e:
         traceback.print_exc()
 

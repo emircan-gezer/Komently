@@ -1,211 +1,163 @@
 import json
 import os
-from typing import TypedDict, Annotated, List, Union
+from typing import TypedDict, Annotated, List, Union, Optional
 from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.memory import MemorySaver
 from langchain_openai import ChatOpenAI
 from crew import ModerationCrew, ChatCrew, AnalystCrew
 
-# 1. Define Stronger State
+# --- LangSmith Integration ---
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_PROJECT"] = "Komently-Advanced-Orchestrator"
 
+# 1. Advanced State Definition
 class GraphState(TypedDict):
-    """Represents the state of our orchestrator."""
+    """
+    Unified state for LangGraph and CrewAI.
+    This allows both frameworks to 'speak the same language'.
+    """
     input: str
     section_id: str
     history: List[dict]
-
-    # orchestration
+    
+    # Routing & Flow
     next_action: str
     confidence: float
-
-    # outputs
+    
+    # Structured Outputs
     crew_output: Union[dict, str, None]
-    result: str
+    final_response: str
+    
+    # Metadata for tracing/debugging
+    metadata: dict
 
-    # metadata
-    user_id: str | None
-    origin: str  # e.g., "/moderate", "/chat", "/report"
-    flags: dict
-
-# 2. Utility for Crew Execution
-
-def run_crew(crew_class, inputs):
-    """Helper to instantiate and kickoff a CrewAI crew."""
+# 2. Advanced Crew Wrapper
+def execute_crew_task(state: GraphState, crew_class) -> dict:
+    """
+    A 'Better' way to run Crews: 
+    It explicitly maps the LangGraph state into CrewAI inputs 
+    and handles the transition back to LangGraph cleanly.
+    """
+    print(f"[Advanced-Graph] Handoff to CrewAI: {crew_class.__name__}")
+    
+    # Prepare inputs specifically from current state
+    crew_inputs = {
+        "input": state["input"],
+        "section_id": state["section_id"],
+        "history_text": "\n".join([f"{m['role']}: {m['content']}" for m in state.get('history', [])[-5:]]),
+        # Add flags from state metadata
+        **state.get('metadata', {})
+    }
+    
     crew_instance = crew_class()
-    return crew_instance.crew().kickoff(inputs=inputs)
+    result = crew_instance.crew().kickoff(inputs=crew_inputs)
+    
+    # Log the transition for LangSmith
+    print(f"[Advanced-Graph] Crew completed. Result size: {len(str(result.raw))} chars")
+    
+    return {
+        "crew_output": result.raw,
+        "final_response": result.raw,
+        "metadata": {**state.get('metadata', {}), "last_agent": "CrewAI"}
+    }
 
-# 3. Nodes
+# 3. Enhanced Nodes
 
-def router_node(state: GraphState):
+def intelligent_router(state: GraphState):
     """
-    Intelligent router. 
-    Uses the message origin as context, but allows the LLM to override
-    based on the user's actual intent.
+    Uses GPT-4o-mini as a 'Control Plane' to decide which 'Worker Plane' (CrewAI) to call.
     """
+    print(f"[Advanced-Graph] Step: Routing | Input: {state['input'][:50]}...")
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     
     prompt = f"""
-    You are the system orchestrator for Komently.
-    
-    User Message: "{state['input']}"
-    Message Origin: {state.get('origin', 'unknown')}
+    System: Komently Orchestrator.
+    Input: "{state['input']}"
+    Origin: {state.get('metadata', {}).get('origin', 'direct')}
 
-    CONTEXT:
-    The user is interacting via the '{state.get('origin')}' endpoint. 
-    - Usually, requests from '/moderate' should go to 'moderation'.
-    - Usually, requests from '/chat' should go to 'chat'.
-    - Usually, requests from '/report' should go to 'analyst'.
-    - The /moderate endpoint must never be routed other than moderation.
-    
-    HOWEVER, if the user's CLEAR INTENT is different (e.g., they are asking for a report 
-    while in the chat), override the default and route appropriately. 
+    Task: Classify this request into one of the specialized crews:
+    1. 'moderation': Content safety, spam, toxicity, and rule enforcement.
+    2. 'chat': General help, account settings, or FAQ interaction.
+    3. 'analyst': Generating reports, summaries, or data exports.
 
-    Options:
-    - moderation: reviewing comments, checking toxicity/spam.
-    - chat: help, conversation, configuration questions.
-    - analyst: requests for reports, summaries, or analytics.
-
-    Return ONLY a JSON object:
-    {{ "route": "moderation" | "chat" | "analyst", "confidence": 0-1, "reasoning": "brief explanation" }}
+    Response: Return ONLY a JSON object with keys: "route", "reasoning".
     """
-
-    res = llm.invoke(prompt)
     
-    content = res.content.strip()
-    if "```json" in content:
-        content = content.split("```json")[1].split("```")[0].strip()
-    elif "```" in content:
-        content = content.split("```")[1].split("```")[0].strip()
-        
+    res = llm.invoke(prompt)
     try:
-        data = json.loads(content)
+        # Clean potential markdown from LLM
+        raw_json = res.content.strip().replace("```json", "").replace("```", "")
+        data = json.loads(raw_json)
+        route = data.get("route", "chat")
     except:
-        # Fallback to origin if LLM fails
-        origin = state.get('origin', '/chat')
-        route = "moderation" if "/moderate" in origin else "chat"
-        data = {"route": route, "confidence": 0.5}
-
-    return {
-        "next_action": data.get("route", "chat"),
-        "confidence": data.get("confidence", 0.0)
-    }
+        route = "chat"
+    
+    print(f"[Advanced-Graph] Decided Route: {route}")
+    return {"next_action": route}
 
 def moderation_node(state: GraphState):
-    """Executes the ModerationCrew."""
-    result = run_crew(
-        ModerationCrew,
-        {
-            "comment_body": state["input"],
-            "section_id": state["section_id"],
-            "parent_context": ""
-        }
-    )
-    
-    # Extract string and try parsing JSON
-    raw_str = result.raw
-    try:
-        clean_json = raw_str.strip()
-        if "```" in clean_json:
-            clean_json = clean_json.split("```")[1]
-            if clean_json.startswith("json"): clean_json = clean_json[4:]
-            clean_json = clean_json.strip()
-        verdict = json.loads(clean_json)
-    except:
-        verdict = {"status": "approved", "reason": "Parsing failed", "raw": raw_str}
-
-    return {
-        "crew_output": verdict,
-        "result": raw_str,
-        "flags": {"moderated": True}
-    }
+    return execute_crew_task(state, ModerationCrew)
 
 def chat_node(state: GraphState):
-    """Executes the ChatCrew."""
-    history_text = ""
-    for msg in state.get("history", [])[-10:]:
-        role = msg.get("role", "user")
-        content = msg.get("content", "")
-        history_text += f"\n{role.upper()}: {content}"
-
-    result = run_crew(
-        ChatCrew,
-        {
-            "user_message": state["input"],
-            "section_id": state["section_id"],
-            "history_text": history_text,
-            "current_state": "Context provided via tools."
-        }
-    )
-    
-    raw_str = result.raw
-    return {
-        "crew_output": {"raw": raw_str},
-        "result": raw_str
-    }
+    return execute_crew_task(state, ChatCrew)
 
 def analyst_node(state: GraphState):
-    """Executes the AnalystCrew."""
-    result = run_crew(
-        AnalystCrew,
-        {
-            "section_id": state["section_id"],
-            "report_id": state.get("flags", {}).get("report_id", "manual_trigger")
-        }
-    )
+    return execute_crew_task(state, AnalystCrew)
+
+def post_process_node(state: GraphState):
+    """
+    A unified cleanup node. 
+    A 'Better' integration pattern ensures all outputs go through a 
+    standardization step before reaching the user.
+    """
+    print("[Advanced-Graph] Step: Finalizing Output")
+    raw = state.get("final_response", "")
     
-    raw_str = result.raw
-    return {
-        "crew_output": {"raw": raw_str},
-        "result": raw_str
-    }
+    # If the output is JSON (typical for moderation), parse it
+    if "{" in raw and "}" in raw:
+        try:
+            # Simple attempt to extract JSON if agents wrapped it in text
+            json_str = raw[raw.find("{"):raw.rfind("}")+1]
+            state["crew_output"] = json.loads(json_str)
+        except:
+            pass
 
-def finalize_node(state: GraphState):
-    """Cleans up and formats the final result."""
-    return {
-        "result": state["result"],
-        "crew_output": state["crew_output"]
-    }
+    return state
 
-# 4. Routing Logic
+# 4. Build the Unified Graph
 
-def route_decision(state: GraphState):
-    """Returns the name of the next node to visit."""
-    return state["next_action"]
-
-# 5. Build Graph
-
-def build_graph():
+def create_komently_brain():
     workflow = StateGraph(GraphState)
 
-    # Add Nodes
-    workflow.add_node("router", router_node)
+    # Define Nodes
+    workflow.add_node("router", intelligent_router)
     workflow.add_node("moderator", moderation_node)
     workflow.add_node("chat", chat_node)
     workflow.add_node("analyst", analyst_node)
-    workflow.add_node("finalize", finalize_node)
+    workflow.add_node("finalize", post_process_node)
 
-    # Set Entry Point
+    # Define Flow
     workflow.set_entry_point("router")
-
-    # Add Conditional Edges
+    
     workflow.add_conditional_edges(
         "router",
-        route_decision,
+        lambda x: x["next_action"],
         {
             "moderation": "moderator",
             "chat": "chat",
-            "analyst": "analyst",
+            "analyst": "analyst"
         }
     )
 
-    # Connect to Finalize
     workflow.add_edge("moderator", "finalize")
     workflow.add_edge("chat", "finalize")
     workflow.add_edge("analyst", "finalize")
-
-    # Connect to END
     workflow.add_edge("finalize", END)
 
-    return workflow.compile()
+    # Add persistence
+    memory = MemorySaver()
+    return workflow.compile(checkpointer=memory)
 
-# Singleton instance
-komently_app = build_graph()
+# Exported Instance
+komently_app = create_komently_brain()
+
