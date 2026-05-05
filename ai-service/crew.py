@@ -2,15 +2,13 @@
 from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
 
-from tools.supabase_tools import (
+from tools.mcp_adapter import (
     FetchSectionSettingsTool,
     FetchRecentCommentsTool,
     FetchParentThreadTool,
     UpdateCommentStatusTool,
     UpdateSectionTool,
     TriggerIntelReportTool,
-)
-from tools.analyst_tools import (
     FetchWeeklyAnalyticsTool,
     FetchTopCommentsTool,
     UpdateReportStatusTool,
@@ -28,9 +26,9 @@ class ModerationCrew:
         return Agent(
             config=self.agents_config['fetcher'],
             tools=[
-                FetchSectionSettingsTool(),
-                FetchRecentCommentsTool(),
-                FetchParentThreadTool()
+                FetchSectionSettingsTool,
+                FetchRecentCommentsTool,
+                FetchParentThreadTool,
             ],
             verbose=True,
             allow_delegation=False
@@ -41,12 +39,12 @@ class ModerationCrew:
         return Agent(
             config=self.agents_config['manager'],
             tools=[
-                FetchSectionSettingsTool(),
-                FetchRecentCommentsTool(),
-                UpdateCommentStatusTool(),
-                UpdateSectionTool(),
-                FetchParentThreadTool(),
-                TriggerIntelReportTool(),
+                FetchSectionSettingsTool,
+                FetchRecentCommentsTool,
+                UpdateCommentStatusTool,
+                UpdateSectionTool,
+                FetchParentThreadTool,
+                TriggerIntelReportTool,
             ],
             verbose=True,
             allow_delegation=False
@@ -104,12 +102,12 @@ class ChatCrew:
         return Agent(
             config=self.agents_config['manager'],
             tools=[
-                FetchSectionSettingsTool(),
-                FetchRecentCommentsTool(),
-                UpdateCommentStatusTool(),
-                UpdateSectionTool(),
-                FetchParentThreadTool(),
-                TriggerIntelReportTool(),
+                FetchSectionSettingsTool,
+                FetchRecentCommentsTool,
+                UpdateCommentStatusTool,
+                UpdateSectionTool,
+                FetchParentThreadTool,
+                TriggerIntelReportTool,
             ],
             verbose=True,
             allow_delegation=False
@@ -144,9 +142,9 @@ class AnalystCrew:
         return Agent(
             config=self.agents_config['analyst'],
             tools=[
-                FetchWeeklyAnalyticsTool(),
-                FetchTopCommentsTool(),
-                UpdateReportStatusTool()
+                FetchWeeklyAnalyticsTool,
+                FetchTopCommentsTool,
+                UpdateReportStatusTool,
             ],
             verbose=True,
             allow_delegation=False
