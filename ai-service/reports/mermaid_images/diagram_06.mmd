@@ -1,0 +1,22 @@
+graph TD
+    subgraph Internal
+        MAIN[main.py\nfetch_section_settings\nupdate_report_status]
+        CA[CrewAI Agents]
+        ADP[mcp_adapter.py\nMCPTool wrappers]
+        CA --> ADP
+        ADP -->|direct in-process call| MCP
+        MAIN -->|direct import| MCP
+    end
+
+    subgraph External
+        CD[Claude Desktop]
+        CUR[Cursor IDE]
+        CD -->|SSE :8001| MCP
+        CUR -->|SSE :8001| MCP
+    end
+
+    MCP[mcp_server.py\nFastMCP — komently-tools\n9 registered tools]
+    MCP --> DB[(Supabase)]
+
+    style MCP fill:#f3e5f5,stroke:#6a1b9a
+    style MAIN fill:#e8f5e9,stroke:#2e7d32

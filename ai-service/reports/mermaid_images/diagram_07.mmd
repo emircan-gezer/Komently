@@ -1,0 +1,21 @@
+graph TD
+    KICK[crew.kickoff\nmoderation_task] --> MGR[Manager LLM\ngpt-4o-mini\narbitrator]
+
+    MGR -->|delegate + comment text| SPA[spam_agent\nblacklist · patterns · links]
+    MGR -->|delegate + comment text| TOX[toxicity_agent\nscoring · slurs · threats]
+    MGR -->|delegate + comment text| CTX[context_agent\nthread coherence · off-topic]
+
+    SPA --> T1[fetch_section_settings\nfetch_recent_comments]
+    TOX --> T2[fetch_section_settings]
+    CTX --> T3[fetch_section_settings\nfetch_parent_thread]
+
+    SPA -->|spam verdict| MGR
+    TOX -->|toxicity score| MGR
+    CTX -->|coherence verdict| MGR
+
+    MGR --> OUT[JSON Verdict\nstatus · toxicityScore · isSpam\nsentimentScore · confidence · reason]
+
+    style MGR fill:#c8e6c9,stroke:#2e7d32
+    style SPA fill:#e3f2fd,stroke:#1565c0
+    style TOX fill:#e3f2fd,stroke:#1565c0
+    style CTX fill:#e3f2fd,stroke:#1565c0

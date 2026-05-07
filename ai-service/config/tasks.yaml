@@ -1,45 +1,47 @@
-fetch_task:
+moderation_task:
   description: >
-    Fetch the section settings and the 10 most recent comments
-    for section_id '{section_id}'.
-    {parent_context}
-    Return all raw data correctly.
-  expected_output: "JSON containing section settings and recent comments."
+    ══════════════════════════════════════════════════════════
+    NEW COMMENT TO EVALUATE (section: {section_id})
+    ══════════════════════════════════════════════════════════
+    COMMENT TEXT: "{input}"
+    PARENT COMMENT ID (empty if top-level): {parent_id}
+    ══════════════════════════════════════════════════════════
+    {strict_context}
 
-manage_task:
-  description: >
-    Using the section settings retrieved by the Data Retrieval Specialist,
-    create a strict, numbered moderation rulebook in plain English. Include
-    the toxicity threshold (`ai_toxicity_threshold`), character limits, and blacklisted words.
-    Crucially, if the settings enable `spam_guard_enabled`, add strict heuristics against promotional or bot-like messages.
-    If `context_analyzer_enabled` is active and there is a parent comment, add a strict rule requiring replies to stay relevant to the topic.
-    If `sentiment_analysis_enabled` is active, instruct the moderator to output an accurate sentiment score.
-  expected_output: "A numbered plain-English moderation rulebook."
+    IMPORTANT — YOU ARE THE MANAGER. Rules you MUST follow:
+    1. Delegate to ALL THREE specialists using delegate_work_to_coworker — include the
+       exact comment text in every delegation. Do NOT ask agents to look it up.
+    2. After receiving all three specialist verdicts, synthesize IMMEDIATELY into the
+       final JSON. Do NOT use ask_question_to_coworker at any point.
+    3. The comment text is: "{input}"
 
-moderate_task:
-  description: >
-    Evaluate the following comment against the moderation rulebook:
+    Delegate to your three specialists, each analysing the SAME comment text:
+    - spam_agent    — use section_id={section_id}; evaluate comment "{input}" for blacklist hits,
+                      repetitive patterns, link density, and promotional language.
+    - toxicity_agent — use section_id={section_id}; score comment "{input}" on a 0–1 toxicity
+                       scale against the section's ai_toxicity_threshold.
+    - context_agent — use section_id={section_id}; if parent_id is non-empty fetch it, then
+                      evaluate whether comment "{input}" is coherent/on-topic.
 
-    ---
-    {comment_body}
-    ---
+    Synthesise their findings into ONE definitive verdict:
+    - toxicityScore > 0.85 OR isSpam = true  →  status/action = "rejected"
+    - Completely off-topic reply (context_analyzer_enabled = true)  →  status/action = "rejected"
+    - toxicityScore 0.6 – 0.85  →  status/action = "flagged"
+    - toxicityScore 0.4 – 0.6 OR borderline spam  →  status/action = "shadow_hidden"
+    - toxicityScore < 0.4  →  status/action = "approved"
 
-    Decide on an action and status based on these thresholds:
-    - toxicityScore > 0.85 OR isSpam is true: action='rejected', status='rejected'
-    - Context Analyzer violation (completely off-topic reply): action='rejected', status='rejected'
-    - toxicityScore between 0.6 and 0.85: action='flagged', status='flagged'
-    - toxicityScore between 0.4 and 0.6 OR borderline spammy: action='shadow_hidden', status='shadow_hidden'
-    - toxicityScore < 0.4: action='approved', status='approved'
-
-    Output ONLY a JSON object with these exact keys:
-      "status": "approved", "flagged", "rejected", or "shadow_hidden",
-      "action": "approved", "flagged", "rejected", or "shadow_hidden",
-      "toxicityScore": float 0.0-1.0,
-      "isSpam": true or false,
-      "sentimentScore": float ranging from -1.0 (very negative) to 1.0 (very positive),
-      "reason": brief explanation string
-    Do NOT add any text outside the JSON.
-  expected_output: 'JSON object: {"status":"...","action":"...","toxicityScore":...,"isSpam":...,"reason":"..."}'
+    Output ONLY this JSON — no other text:
+    {{
+      "status": "approved" | "flagged" | "rejected" | "shadow_hidden",
+      "action": "approved" | "flagged" | "rejected" | "shadow_hidden",
+      "toxicityScore": <float 0.0–1.0>,
+      "isSpam": <true|false>,
+      "sentimentScore": <float -1.0 to 1.0>,
+      "confidence": <float 0.0–1.0>,
+      "reason": "<brief explanation>"
+    }}
+  expected_output: >
+    JSON: {"status":"...","action":"...","toxicityScore":...,"isSpam":...,"sentimentScore":...,"confidence":...,"reason":"..."}
 
 chat_task:
   description: >
@@ -50,42 +52,53 @@ chat_task:
     3. Generate large-scale executive intel reports via `trigger_intel_report`.
     4. View the most recent comments via `fetch_recent_comments` and manually `update_comment_status` (approve/reject/flag) them based on user commands.
 
-    CURRENT LIVE SECTION STATE (Use this to answer questions about the current configuration immediately):
+    CURRENT LIVE SECTION STATE (use this to answer configuration questions immediately without a tool call):
     {current_state}
 
     IMPORTANT SETTINGS KEYS for `update_section`:
      - `max_chars` (int)
      - `blacklist` (array of strings)
      - `ai_moderation_enabled` (bool)
-     - `ai_toxicity_threshold` (float 0.1-0.95)
+     - `ai_toxicity_threshold` (float 0.1–0.95)
      - `spam_guard_enabled` (bool)
      - `context_analyzer_enabled` (bool)
      - `sentiment_analysis_enabled` (bool)
-     - `auto_action_strikes` (int 0-10)
+     - `auto_action_strikes` (int 0–10)
 
-    RULES FOR YOUR RESPONSES:
-    - If asked what you can do, proudly and clearly list your capabilities and briefly explain the various Spam, Context, and Analytics settings you control.
-    - If asked to create an intel report / analytics summary, USE `trigger_intel_report`.
+    RULES:
+    - If asked what you can do, clearly list your capabilities and briefly explain the settings you control.
+    - If asked for an intel report / analytics summary, USE `trigger_intel_report`.
     - If asked to configure settings, USE `update_section`.
-    - Be deeply helpful. If someone asks 'What is my spam setting?', read the LIVE SECTION STATE to answer accurately without needing a tool call.
+    - Be deeply helpful. Read LIVE SECTION STATE before reaching for a tool.
 
-    CONVERSATION HISTORY:{history_text}
+    COMMENT LISTING RULES — follow these exactly when showing comments:
+    - Always call `fetch_recent_comments` to get the live list with real UUIDs.
+    - Display each comment as a numbered list in this format:
+        #N [id: <uuid>] "body" (status, spam/non-spam)
+    - NEVER omit the UUID from the list. The user needs it to reference comments later.
+    - When the user says something like "approve #3", "reject comment 2", or "flag the last one":
+        1. If you already fetched the list in this turn, use the UUID you already have.
+        2. If you don't have the list, call `fetch_recent_comments` again to resolve the position.
+        3. NEVER ask the user for the UUID — you must resolve it yourself from the fetched list.
+    - Valid statuses for `update_comment_status`: approved, flagged, rejected, shadow_hidden.
+
+    CONVERSATION HISTORY:
+    {history_text}
 
     USER'S LATEST MESSAGE: {user_message}
 
-    Respond helpfully and concisely. If you act, confirm what you did.
+    Respond helpfully and concisely. Confirm any actions you took.
 
-    At the end of your response, on a new line, output a JSON array of
-    action descriptions you performed (empty array [] if no actions taken).
-    Format: ACTIONS: ["action 1", "action 2"]
+    At the end of your response, on a new line, output a JSON array of actions performed
+    (empty array [] if none). Format: ACTIONS: ["action 1", "action 2"]
   expected_output: "A helpful response followed by ACTIONS: [...] on its own line."
 
 report_task:
   description: >
-    You have been requested to evaluate community health for section '{section_id}'.
+    Generate a community health report for section '{section_id}'.
 
-    1. Fetch the raw SQL analytics for the last 7 days.
-    2. Fetch the top 20 approved comments to understand what people are discussing.
-    3. Write a rich Markdown Executive Summary focusing on volume trends, moderation/spam efficiency, and notable conversation topics.
-    4. Finally, use your UpdateReportStatusTool to securely save the generated Markdown string into the database under report_id: '{report_id}'.
-  expected_output: "An empty string (saving to the database is the primary expected result)."
+    1. Fetch the raw analytics for the last 7 days via fetch_weekly_analytics.
+    2. Fetch the top 20 approved comments via fetch_top_comments to understand discussion trends.
+    3. Write a rich Markdown Executive Summary: volume trends, moderation/spam efficiency, notable topics.
+    4. Save the report using update_report_status with report_id: '{report_id}'.
+  expected_output: "An empty string — saving to the database is the primary result."

@@ -1,0 +1,10 @@
+graph TD
+    KICK[crew.kickoff\nchat_task] --> MAN[manager agent\nModerator Copilot]
+
+    MAN --> R[fetch_section_settings\nfetch_recent_comments]
+    MAN --> W[update_section\nupdate_comment_status]
+    MAN --> T[trigger_intel_report]
+
+    MAN --> OUT[Reply text + ACTIONS list]
+
+    style MAN fill:#fff3e0,stroke:#e65100

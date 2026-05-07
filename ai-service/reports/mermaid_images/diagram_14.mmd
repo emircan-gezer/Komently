@@ -1,0 +1,90 @@
+graph TD
+    %% Entry points
+    COM[New Comment\nPOST /moderate] --> API
+    OWN[Dashboard Owner\nPOST /chat] --> API
+    HUM[Human Moderator\nPATCH /moderate/id/resume] --> API
+    EXT[Claude Desktop\nCursor] -->|SSE :8001| MCPS
+
+    %% API
+    API[FastAPI\nmain.py]
+
+    %% LangGraph
+    API -->|komently_app.invoke| LG_MN
+
+    subgraph LangGraph [LangGraph — Moderation Lifecycle]
+        LG_MN[moderation_node]
+        LG_RO{route_on_output}
+        LG_RT[retry_node]
+        LG_DR[deep_review_node]
+        LG_ES[escalate_node\ninterrupt]
+        LG_AA[auto_approve_node]
+        LG_FN[finalize_node\nfallback chain]
+
+        LG_MN --> LG_RO
+        LG_RO -->|spam| LG_FN
+        LG_RO -->|low confidence| LG_RT
+        LG_RO -->|toxicity > 0.7| LG_ES
+        LG_RO -->|borderline| LG_DR
+        LG_RO -->|clean| LG_AA
+        LG_RT --> LG_MN
+        LG_DR --> LG_FN
+        LG_ES --> LG_FN
+        LG_AA --> LG_FN
+    end
+
+    %% CrewAI
+    LG_MN -->|kickoff| MOD
+    LG_DR -->|kickoff strict| MOD
+    API -->|direct kickoff| CHAT
+    API -->|BackgroundTask kickoff| ANAL
+
+    subgraph CrewAI [CrewAI — Agent Crews]
+        subgraph MOD [ModerationCrew — hierarchical]
+            MMGR[Manager LLM]
+            SPA[spam_agent]
+            TOX[toxicity_agent]
+            CTX[context_agent]
+            SPA --> MMGR
+            TOX --> MMGR
+            CTX --> MMGR
+        end
+        subgraph CHAT [ChatCrew — sequential]
+            MAN[manager agent]
+        end
+        subgraph ANAL [AnalystCrew — sequential]
+            ANL[analyst agent]
+        end
+    end
+
+    %% MCP adapter → MCP server
+    SPA -->|mcp_adapter| MCPS
+    TOX -->|mcp_adapter| MCPS
+    CTX -->|mcp_adapter| MCPS
+    MAN -->|mcp_adapter| MCPS
+    ANL -->|mcp_adapter| MCPS
+
+    %% main.py also calls MCP directly
+    API -->|fetch_section_settings\ndirect import| MCPS
+    API -->|update_report_status\nerror recovery| MCPS
+
+    %% MCP server
+    MCPS[mcp_server.py\nFastMCP — 9 tools\nsingle source of truth]
+    MCPS --> DB[(Supabase)]
+
+    %% Escalation
+    LG_ES -->|GraphInterrupt| API
+    API -->|flagged + thread_id| OWN
+
+    %% Outputs
+    LG_FN --> API
+    CHAT --> API
+    ANAL -->|202| API
+
+    style LG_MN fill:#e3f2fd,stroke:#1565c0
+    style LG_RO fill:#fff9c4,stroke:#f9a825
+    style LG_ES fill:#ffcdd2,stroke:#c62828
+    style LG_DR fill:#ffe0b2,stroke:#e65100
+    style LG_AA fill:#c8e6c9,stroke:#2e7d32
+    style MMGR fill:#c8e6c9,stroke:#2e7d32
+    style MCPS fill:#f3e5f5,stroke:#6a1b9a
+    style DB  fill:#fafafa,stroke:#546e7a

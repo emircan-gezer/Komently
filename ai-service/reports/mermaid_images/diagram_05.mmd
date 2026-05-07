@@ -1,0 +1,16 @@
+graph TD
+    REQ[POST /generate-report\nsection_id · report_id]
+    REQ --> BG[FastAPI BackgroundTask\n_run_analyst spawned]
+    REQ --> R202[Return 202 immediately]
+
+    BG --> AC[AnalystCrew.kickoff\nanalyst agent]
+    AC --> T1[fetch_weekly_analytics\n7-day daily view]
+    AC --> T2[fetch_top_comments\n20 approved desc]
+    AC --> T3[update_report_status\nsave Markdown + mark completed]
+
+    AC -->|exception| ERR[update_report_status\nstatus=completed\ncontent=error message]
+    ERR --> UNBLOCK[Section unblocked\nfor future reports]
+
+    style BG fill:#e8f5e9,stroke:#2e7d32
+    style AC fill:#f3e5f5,stroke:#6a1b9a
+    style ERR fill:#ffcdd2,stroke:#c62828

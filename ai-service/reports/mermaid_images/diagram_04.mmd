@@ -1,0 +1,19 @@
+graph TD
+    REQ[POST /chat\nsection_id · message · history]
+    REQ --> MCP[mcp_server.fetch_section_settings\nsection settings + name + status]
+    MCP --> INPUTS[Build inputs\ncurrent_state · history_text · user_message]
+    INPUTS --> CC[ChatCrew.kickoff\nmanager agent]
+
+    CC --> RT[fetch_section_settings\nfetch_recent_comments\nvia mcp_adapter]
+    CC --> WT[update_section\nupdate_comment_status\ntrigger_intel_report\nvia mcp_adapter]
+
+    CC --> RAW[Raw agent output\nreply text + ACTIONS JSON]
+    RAW --> PARSE{Contains ACTIONS:?}
+    PARSE -->|yes| SPLIT[Split on ACTIONS:\nreply + JSON array]
+    PARSE -->|no| PASSTHROUGH[reply = full output\nactions = empty list]
+    SPLIT --> OUT[Return ChatResponse]
+    PASSTHROUGH --> OUT
+
+    style MCP fill:#f3e5f5,stroke:#6a1b9a
+    style CC fill:#fff3e0,stroke:#e65100
+    style WT fill:#fce4ec,stroke:#c62828

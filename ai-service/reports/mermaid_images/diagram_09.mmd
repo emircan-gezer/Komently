@@ -1,0 +1,8 @@
+graph TD
+    KICK[crew.kickoff\nreport_task] --> ANL[analyst agent]
+
+    ANL --> T1[fetch_weekly_analytics\n7-day daily view]
+    ANL --> T2[fetch_top_comments\n20 approved · newest first]
+    ANL --> T3[update_report_status\nsave Markdown + mark completed]
+
+    style ANL fill:#f3e5f5,stroke:#6a1b9a

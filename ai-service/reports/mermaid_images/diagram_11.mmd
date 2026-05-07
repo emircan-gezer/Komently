@@ -1,0 +1,9 @@
+graph TD
+    FN[finalize_node]
+    FN --> TRY1{Parse final_response\nas JSON}
+    TRY1 -->|success| OK[Return parsed verdict]
+    TRY1 -->|fail| TRY2{Parse crew_output\nas JSON}
+    TRY2 -->|success| WARN1[Log warning\nReturn crew_output]
+    TRY2 -->|fail| WARN2[Log warning\nReturn safe flagged default\nconfidence=0.0]
+
+    style WARN2 fill:#ffcdd2,stroke:#c62828

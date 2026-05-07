@@ -1,23 +1,25 @@
 # ai-service/main.py
-# FastAPI application exposing /moderate and /chat endpoints powered by CrewAI.
 
-import os
 import json
+import os
 import traceback
+import uuid
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from langgraph.errors import GraphInterrupt
 from pydantic import BaseModel, Field
 
-load_dotenv()                       # Load .env before importing agents
+load_dotenv()
 
-from crew import ModerationCrew, ChatCrew, AnalystCrew
+from crew import ChatCrew, AnalystCrew
 from graph import komently_app
+from tools.mcp_server import fetch_section_settings, update_report_status
 
 
-# Lifespan
+# ── Lifespan ──────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -26,34 +28,31 @@ async def lifespan(app: FastAPI):
     print("Komently AI Service shutting down.")
 
 
-app = FastAPI(
-    title="Komently AI Service",
-    version="1.0.0",
-    lifespan=lifespan,
-)
+app = FastAPI(title="Komently AI Service", version="2.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],            # tighten in production
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# Health
+# ── Health ────────────────────────────────────────────────────────────────────
 
 @app.get("/health")
 async def health():
     return {"status": "ok"}
 
 
-# /moderate
+# ── /moderate ─────────────────────────────────────────────────────────────────
 
 class ModerateRequest(BaseModel):
     comment_id: str
     section_id: str
     body: str
     parent_id: str | None = None
+
 
 class ModerationVerdict(BaseModel):
     status: str = "approved"
@@ -63,88 +62,158 @@ class ModerationVerdict(BaseModel):
     reason: str = ""
     metadata: dict = {}
 
+
 @app.post("/moderate", response_model=ModerationVerdict)
 async def moderate_comment(req: ModerateRequest):
     """
-    Run the 3-agent moderation crew:
-      1. Fetcher  → retrieves section settings
-      2. Manager  → builds a plain-English rulebook
-      3. Moderator → evaluates the comment → JSON verdict
+    Runs the hierarchical ModerationCrew inside a stateful LangGraph lifecycle:
+      moderation → confidence router → retry / deep-review / escalate / auto-approve → finalize
+
+    High-toxicity comments (score > 0.7) pause the graph via interrupt() and return
+    a 'flagged' pending-review verdict. Resume via PATCH /moderate/{thread_id}.
     """
+    inputs = {
+        "input": req.body,
+        "section_id": req.section_id,
+        "history": [],
+        "retry_count": 0,
+        "toxicity_score": 0.0,
+        "confidence": 1.0,
+        "metadata": {
+            "origin": "/moderate",
+            "comment_id": req.comment_id,
+            "parent_id": req.parent_id or "",
+        },
+    }
+    # Each invocation gets its own thread so MemorySaver never replays a previous run
+    config = {"configurable": {"thread_id": f"mod_{req.comment_id}_{uuid.uuid4().hex[:8]}"}}
+
     try:
-        # Use Advanced LangGraph Orchestrator
-        inputs = {
-            "input": req.body,
-            "section_id": req.section_id,
-            "metadata": {
-                "origin": "/moderate",
-                "comment_id": req.comment_id
-            },
-        }
-        
-        config = {"configurable": {"thread_id": f"mod_{req.section_id}_{req.comment_id}"}}
         output = komently_app.invoke(inputs, config=config)
         verdict = output.get("crew_output", {})
+        if isinstance(verdict, str):
+            try:
+                verdict = json.loads(verdict)
+            except json.JSONDecodeError:
+                verdict = {}
 
         return ModerationVerdict(
-            status=verdict.get("status", "approved") if isinstance(verdict, dict) else "approved",
-            action=verdict.get("action", "approve") if isinstance(verdict, dict) else "approve",
-            toxicity_score=float(verdict.get("toxicityScore", 0.0)) if isinstance(verdict, dict) else 0.0,
-            is_spam=bool(verdict.get("isSpam", False)) if isinstance(verdict, dict) else False,
-            reason=verdict.get("reason", "") if isinstance(verdict, dict) else "Processed",
+            status=verdict.get("status", "approved"),
+            action=verdict.get("action", "approved"),
+            toxicity_score=float(verdict.get("toxicityScore", 0.0)),
+            is_spam=bool(verdict.get("isSpam", False)),
+            reason=verdict.get("reason", ""),
             metadata={
-                "orchestrator": "langgraph-advanced",
-                "raw_output": str(output.get("final_response"))[:500],
+                "sentiment_score": verdict.get("sentimentScore", 0.0),
+                "confidence": verdict.get("confidence", 1.0),
             },
+        )
+
+    except GraphInterrupt as gi:
+        # Graph paused at escalate_node — comment needs human review.
+        # The interrupt payload carries the actual toxicity score from the crew.
+        thread_id = config["configurable"]["thread_id"]
+        payload = gi.args[0] if gi.args else {}
+        actual_toxicity = float(payload.get("toxicity_score", 0.8)) if isinstance(payload, dict) else 0.8
+        print(f"[API] Comment escalated for human review | thread={thread_id} | toxicity={actual_toxicity:.2f}")
+        return ModerationVerdict(
+            status="flagged",
+            action="flagged",
+            toxicity_score=actual_toxicity,
+            is_spam=False,
+            reason="High-toxicity comment escalated for human review.",
+            metadata={"escalated": True, "pending_thread_id": thread_id},
         )
 
     except Exception as e:
         traceback.print_exc()
-        # Fail-safe: approve so we don't block legitimate users
+        # Fail-safe: approve so we never silently block legitimate users
         return ModerationVerdict(
             status="approved",
+            action="approved",
             toxicity_score=0.0,
             is_spam=False,
-            reason=f"Moderation crew error: {str(e)}",
+            reason=f"Moderation error (fail-safe approve): {str(e)}",
             metadata={"error": str(e)},
         )
 
 
-# /chat
+# ── /moderate/{thread_id}/resume — human decision resumes escalated graph ─────
+
+class ResumeRequest(BaseModel):
+    status: str = Field(description="Moderator decision: 'approved' or 'rejected'")
+
+
+@app.patch("/moderate/{thread_id}/resume", response_model=ModerationVerdict)
+async def resume_moderation(thread_id: str, req: ResumeRequest):
+    """
+    Resume a graph that was paused at the escalate_node after human review.
+    Pass the moderator's decision as { "status": "approved" | "rejected" }.
+    """
+    if req.status not in ("approved", "rejected", "flagged"):
+        raise HTTPException(status_code=400, detail="status must be approved, rejected, or flagged")
+
+    from langgraph.types import Command
+    config = {"configurable": {"thread_id": thread_id}}
+    try:
+        output = komently_app.invoke(Command(resume={"status": req.status}), config=config)
+        verdict = output.get("crew_output", {})
+        if isinstance(verdict, str):
+            verdict = json.loads(verdict) if verdict else {}
+
+        return ModerationVerdict(
+            status=verdict.get("status", req.status),
+            action=verdict.get("action", req.status),
+            toxicity_score=float(verdict.get("toxicityScore", 0.8)),
+            is_spam=bool(verdict.get("isSpam", False)),
+            reason=verdict.get("reason", f"Human decision: {req.status}"),
+            metadata={"resumed_by_human": True},
+        )
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── /chat ─────────────────────────────────────────────────────────────────────
 
 class ChatRequest(BaseModel):
     section_id: str
     message: str
     history: list[dict] = Field(default_factory=list)
 
+
 class ChatResponse(BaseModel):
     reply: str
     actions_taken: list[str] = Field(default_factory=list)
 
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat_with_agent(req: ChatRequest):
     """
-    Chat interface for section owners — powered by the Manager agent
-    with access to all Supabase tools.
+    Dashboard chat — calls ChatCrew directly, no LangGraph overhead.
+    The manager agent has full tool access and handles the conversation in one pass.
     """
     try:
-        # Use Advanced LangGraph Orchestrator
-        inputs = {
-            "input": req.message,
-            "section_id": req.section_id,
-            "history": req.history,
-            "metadata": {"origin": "/chat"}
-        }
-        
-        config = {"configurable": {"thread_id": f"chat_{req.section_id}"}}
-        output = komently_app.invoke(inputs, config=config)
-        result = output.get("final_response", "")
+        # Fetch current section state through the MCP tool so the agent can answer
+        # config questions instantly without needing a tool call of its own
+        current_state = fetch_section_settings(req.section_id)
 
-        # Parse actions from the end of the response
+        inputs = {
+            "section_id": req.section_id,
+            "user_message": req.message,
+            "current_state": current_state,
+            "history_text": "\n".join(
+                [f"{m['role']}: {m['content']}" for m in req.history[-5:]]
+            ),
+        }
+
+        result = ChatCrew().crew().kickoff(inputs=inputs)
+        raw = result.raw
+
         actions: list[str] = []
-        reply = result
-        if "ACTIONS:" in result:
-            parts = result.rsplit("ACTIONS:", 1)
+        reply = raw
+        if "ACTIONS:" in raw:
+            parts = raw.rsplit("ACTIONS:", 1)
             reply = parts[0].strip()
             try:
                 actions = json.loads(parts[1].strip())
@@ -160,37 +229,44 @@ async def chat_with_agent(req: ChatRequest):
             actions_taken=[],
         )
 
-# /generate-report
+
+# ── /generate-report ──────────────────────────────────────────────────────────
 
 class GenerateReportRequest(BaseModel):
     section_id: str
     report_id: str
 
-def run_analyst_crew(section_id: str, report_id: str):
+
+def _run_analyst(section_id: str, report_id: str):
     try:
-        inputs = {
-            "input": "Generate a weekly report.",
+        AnalystCrew().crew().kickoff(inputs={
             "section_id": section_id,
-            "metadata": {
-                "origin": "/report",
-                "report_id": report_id
-            }
-        }
-        config = {"configurable": {"thread_id": f"report_{section_id}_{report_id}"}}
-        komently_app.invoke(inputs, config=config)
-    except Exception as e:
+            "report_id": report_id,
+        })
+    except Exception:
         traceback.print_exc()
+        # Mark the report as failed so the section isn't permanently blocked
+        # from generating future reports (trigger_intel_report checks for "processing" rows)
+        try:
+            update_report_status(
+                report_id=report_id,
+                content="Report generation failed. Please try again.",
+            )
+        except Exception:
+            pass
+
 
 @app.post("/generate-report")
 async def generate_report(req: GenerateReportRequest, tasks: BackgroundTasks):
     """
-    Trigger the Analyst Agent to generate a 7-day retrospective markdown report.
-    Returns 202 Accepted instantly; saves to DB in background.
+    Triggers AnalystCrew directly as a background task — no graph overhead
+    for a linear single-agent job. Returns 202 immediately.
     """
-    tasks.add_task(run_analyst_crew, req.section_id, req.report_id)
+    tasks.add_task(_run_analyst, req.section_id, req.report_id)
     return {"status": "processing", "report_id": req.report_id}
 
-# Entry point
+
+# ── Entry point ───────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     import uvicorn

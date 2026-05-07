@@ -1,0 +1,11 @@
+graph TD
+    subgraph Railway Container
+        SH[start.sh]
+        SH -->|background| MCPS[MCP Server\nlocalhost:8001\ninternal only]
+        SH -->|foreground| FAPI[FastAPI\n0.0.0.0 PORT\npublic]
+        FAPI -->|in-process| MCPS
+    end
+
+    INET[Internet] --> FAPI
+    EXT[Claude Desktop\nCursor] -->|SSE| MCPS
+    MCPS --> SB[(Supabase Cloud)]

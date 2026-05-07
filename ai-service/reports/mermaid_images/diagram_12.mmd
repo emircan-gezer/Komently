@@ -1,0 +1,10 @@
+graph TD
+    ES[escalate_node\ncalls interrupt payload] -->|GraphInterrupt raised| API[API catches GraphInterrupt\nextracts toxicity_score from payload]
+    API --> RET[Returns flagged verdict\n+ pending_thread_id in metadata]
+    RET --> MOD[Dashboard Moderator\nreviews comment]
+    MOD -->|PATCH /moderate/thread_id/resume\nbody: status=approved or rejected| CMD[Command resume=status]
+    CMD --> RESUME[Graph resumes from checkpoint\nescalate_node continues]
+    RESUME --> FIN[finalize_node → Final verdict]
+
+    style ES fill:#ffcdd2,stroke:#c62828
+    style MOD fill:#e8f5e9,stroke:#2e7d32

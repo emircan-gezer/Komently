@@ -1,0 +1,22 @@
+graph TD
+    START([START]) --> MN[moderation_node\nrun ModerationCrew]
+    MN --> RO{route_on_output}
+
+    RO -->|isSpam = true| FN
+    RO -->|confidence < 0.5\nretry_count < 2| RT[retry_node\n+1 retry_count]
+    RO -->|confidence < 0.5\nretry_count ≥ 2| FN
+    RO -->|toxicity > 0.7| ES[escalate_node\ninterrupt — human review]
+    RO -->|0.3 – 0.7| DR[deep_review_node\nre-run strict mode]
+    RO -->|toxicity < 0.3\nno spam| AA[auto_approve_node]
+
+    RT -->|cycle max 2×| MN
+    DR --> FN[finalize_node]
+    ES --> FN
+    AA --> FN
+    FN --> END([END])
+
+    style RO fill:#fff9c4,stroke:#f9a825
+    style ES fill:#ffcdd2,stroke:#c62828
+    style DR fill:#ffe0b2,stroke:#e65100
+    style AA fill:#c8e6c9,stroke:#2e7d32
+    style RT fill:#e3f2fd,stroke:#1565c0

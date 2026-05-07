@@ -1,0 +1,10 @@
+{
+  "_comment": "Add this block to your Claude Desktop config at ~/Library/Application Support/Claude/claude_desktop_config.json (macOS) or %APPDATA%\\Claude\\claude_desktop_config.json (Windows). Replace the URL with your Railway deployment URL.",
+  "mcpServers": {
+    "komently": {
+      "transport": "sse",
+      "url": "https://<your-railway-app>.railway.app/sse",
+      "_comment_local": "For local development use: http://localhost:8001/sse"
+    }
+  }
+}

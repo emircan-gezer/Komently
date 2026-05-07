@@ -1,0 +1,30 @@
+graph TD
+    REQ[POST /moderate\ncomment_id · section_id · body · parent_id]
+    REQ --> CFG[Build LangGraph config\nthread_id = mod_commentId_uuid8]
+    CFG --> LG[komently_app.invoke\nLangGraph starts]
+
+    LG --> MN[moderation_node\nModerationCrew.kickoff]
+
+    MN --> RO{route_on_output}
+
+    RO -->|isSpam = true| FN[finalize_node\ncrew verdict stands]
+    RO -->|confidence < 0.5\nretry < 2| RT[retry_node\n+1 retry_count]
+    RO -->|confidence < 0.5\nretry ≥ 2| FN
+    RO -->|toxicity > 0.7| ES[escalate_node\ninterrupt — pause graph]
+    RO -->|0.3 ≤ tox ≤ 0.7| DR[deep_review_node\nstrict re-run]
+    RO -->|toxicity < 0.3\nno spam| AA[auto_approve_node\nforce approved]
+
+    RT --> MN
+    DR --> FN
+    AA --> FN
+
+    ES -->|GraphInterrupt raised| GI[API catches GraphInterrupt\nextracts real toxicity from payload]
+    GI --> FR[Return flagged verdict\nmetadata.pending_thread_id = thread_id]
+
+    FN --> OUT[Return ModerationVerdict]
+
+    style RO fill:#fff9c4,stroke:#f9a825
+    style ES fill:#ffcdd2,stroke:#c62828
+    style DR fill:#ffe0b2,stroke:#e65100
+    style AA fill:#c8e6c9,stroke:#2e7d32
+    style GI fill:#ffcdd2,stroke:#c62828

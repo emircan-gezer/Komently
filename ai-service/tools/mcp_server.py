@@ -58,11 +58,14 @@ def fetch_recent_comments(section_id: str, limit: int = 20) -> str:
     return json.dumps(resp.data or [], default=str)
 
 
+_VALID_STATUSES = ("approved", "flagged", "rejected", "shadow_hidden")
+
 @mcp.tool()
 def update_comment_status(comment_id: str, status: str) -> str:
-    """Update the moderation_status of a specific comment to 'approved' or 'flagged'."""
-    if status not in ("approved", "flagged"):
-        return json.dumps({"error": "status must be 'approved' or 'flagged'"})
+    """Update the moderation_status of a specific comment.
+    Valid values: 'approved', 'flagged', 'rejected', 'shadow_hidden'."""
+    if status not in _VALID_STATUSES:
+        return json.dumps({"error": f"status must be one of {_VALID_STATUSES}"})
     sb = _get_client()
     resp = (
         sb.table("comments")
@@ -128,7 +131,7 @@ def fetch_parent_thread(comment_id: str) -> str:
     sb = _get_client()
     resp = (
         sb.table("comments")
-        .select("id, body, created_at, commenters(username)")
+        .select("id, body, created_at, commenter_id")
         .eq("id", comment_id)
         .single()
         .execute()
@@ -208,10 +211,11 @@ def fetch_top_comments(section_id: str) -> str:
     seven_days_ago = (datetime.now() - timedelta(days=7)).isoformat()
     resp = (
         sb.table("comments")
-        .select("body, toxicity_score, created_at, commenters(username)")
+        .select("body, toxicity_score, created_at, commenter_id")
         .eq("section_id", section_id)
         .eq("moderation_status", "approved")
         .gte("created_at", seven_days_ago)
+        .order("created_at", desc=True)
         .limit(20)
         .execute()
     )
