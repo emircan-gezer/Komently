@@ -33,3 +33,4 @@ sdk/komently-sdk/dist/
 sdk/komently-sdk/node_modules/
 website/next-app/node_modules/
 website/next-app/.next/
+/.claude
